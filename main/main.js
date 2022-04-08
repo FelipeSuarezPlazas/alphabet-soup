@@ -21,7 +21,7 @@ function initVars() {
 
   soup_margin = 20;
   //soup_start_point = createVector(soup_margin + (soup_margin/2), title_height + (soup_margin+(soup_margin/2)));
-  start_point = createVector(soup_margin + (soup_margin/2), title_height + (soup_margin+(soup_margin/2)));
+  soup_start_point = createVector(soup_margin + (soup_margin/2), title_height + (soup_margin+(soup_margin/2)));
 
   sidebar_size = createVector(150, soup_size.y);
 
@@ -41,7 +41,7 @@ function initVars() {
 
 
   mouse = createVector(0, 0);
-  mouse_saved = createVector(0, 0);
+  last_click = createVector(0, 0);
 
   angleMode(DEGREES);
   frameRate(30); 
@@ -54,40 +54,43 @@ function initCanvas() {
 
   cnv = createCanvas(canvasSize.x, canvasSize.y);
   cnv.parent('canva-game');
+
+  pg = createGraphics(canvasSize.x, canvasSize.y);
 }
 
 function setup() {
+
   initVars();
   initCanvas();
 
-  background('white');
-  fill('black');
+  pg.background('white');
+  pg.fill('black');
 
   drawSeparatorLines();
   drawTitle();
   drawSidebar();
   drawAlphabetSoup();
   
-  wordsPerColumn(start_point);
+  wordsPerColumn();
 }
 
 function drawSeparatorLines() {
    // title line.
-  line(0, title_height, width, title_height);
+  pg.line(0, title_height, width, title_height);
 
   // line between soup and words.
-  line(soup_size.x + (soup_margin*2), title_height, soup_size.x + (soup_margin*2), height);
+  pg.line(soup_size.x + (soup_margin*2), title_height, soup_size.x + (soup_margin*2), height);
 }
 
 function drawTitle() {
-  textSize(25);
-  textAlign(CENTER, CENTER);
-  text('Sopa de letras', (soup_size.x + sidebar_size.x)/2, title_height/2 + 5);
+  pg.textSize(25);
+  pg.textAlign(CENTER, CENTER);
+  pg.text('Sopa de letras', (soup_size.x + sidebar_size.x)/2, title_height/2 + 5);
 }
 
 function drawSidebar() {
-  textAlign(LEFT, CENTER);
-  textSize(15);
+  pg.textAlign(LEFT, CENTER);
+  pg.textSize(15);
 
   margin_words = createVector(20, 30);
 
@@ -98,21 +101,26 @@ function drawSidebar() {
   const space_between_words = 40;
 
   for (word of words) {
-    text('· ' + word, pos.x, pos.y);
+    pg.text('· ' + word, pos.x, pos.y);
     pos.y += space_between_words
   }
 }
 
 function drawAlphabetSoup() {
-  textAlign(CENTER, CENTER);
+  pg.textAlign(CENTER, CENTER);
 
-  const row_limit = (space_between_letters * letters_amount.x) + start_point.x;
-  const column_limit = (space_between_letters * letters_amount.y) + start_point.y;
+  const row_limit = (space_between_letters * letters_amount.x) + soup_start_point.x;
+  const column_limit = (space_between_letters * letters_amount.y) + soup_start_point.y;
 
-  for (var i=start_point.x; i < row_limit; i += space_between_letters) {
-    for (var e=start_point.y; e < column_limit; e += space_between_letters) {
+  // LA LETRA DEBE SER DIBUJADA EN LA MITAD DE LA CELDA.
+  // Y CUANDO MIDE UNA CELDA?
+  let initial_point = createVector(
+    soup_start_point.x + (space_between_letters/2), soup_start_point.y + (space_between_letters/2)) // not the same as soup_start_point. This one is in the center of the cell
+
+  for (var x=initial_point.x; x < row_limit; x += space_between_letters) {
+    for (var y=initial_point.y; y < column_limit; y += space_between_letters) {
       random_letter = randomLetter();
-      text(random_letter, i, e)
+      pg.text(random_letter, x, y);
     }
   }
 }
@@ -123,7 +131,7 @@ function randomLetter() {
   return letter;
 }
 
-function wordsPerColumn(start_point) {
+function wordsPerColumn() {
   console.log('esta brillando o no?');
 
   columns_index = []
@@ -145,8 +153,8 @@ function wordsPerColumn(start_point) {
     console.log(columns_index[random_column_index], 'random_column_index');
 
     pos = createVector(
-      (start_point.x + (columns_index[random_column_index] * cell_size.x) - (cell_size.x/2)),
-      (start_point.y) - (cell_size.y/2));
+      (soup_start_point.x + (columns_index[random_column_index] * cell_size.x) - (cell_size.x/2)),
+      (soup_start_point.y) - (cell_size.y/2));
     //square(pos.x, pos.y, cell_size.x);
 
 
@@ -187,44 +195,67 @@ function wordsPerColumn(start_point) {
   }
 }
 
+
+mouse_pressed_soup = false;
+last_rect = {x: -10, y: -10, width: 0, height: 0};
+last_rotation = 0;
+
+
 function draw() {
-  background('white');
-  if (mouseIsPressed === true) {
-    mouse.x = mouseX;
-    mouse.y = mouseY;
+  image(pg, 0, 0); // the entire background, soup, words.
 
-    diff = mouse.sub(mouse_saved);
-    translate(mouse_saved);
+  [mouse.x, mouse.y] = [mouseX, mouseY];
 
-    console.log(diff.x, diff.y, 'mouse direction');
-    
-    norm = diff.copy().normalize();
-    deg = atan(norm.y / norm.x);
-    console.log(deg, 'DEGREEEESSSS')
-    plus = -90;
+  if (mouse_pressed_soup && mouseIsPressed) {
+    if (mouseIsInsideSoup()) {
+      diff = mouse.sub(last_click);
+      translate(last_click);
+      last_rotation = atan2(diff.y, diff.x) - 90;
+      rotate(last_rotation);
 
-    switch(norm) {
+      last_rect.height = 20+diff.mag();
 
+      rect(-10, -10, 20, last_rect.height, 20);
+
+    } else { // if while selecting a word, the mouse leave the soup area.
+      // in this point I need to show the rectangle but with the last position and size.
+      translate(last_click);
+      rotate(last_rotation);
+      rect(-10, -10, 20, last_rect.height, 20);
     }
-
-    rotate(deg + plus);
-
-    rect(-10, -10, 20, 20+diff.mag(), 20);
-
-  } else {
-    // rect(25, 25, 50, 50);
   }
+
+
+  // si el mouse sale de la zona de la sopa de letras pero sigue oprimido,
+  // el rectangulo deberá seguir mostrandose, pero deberá quedarse con la posicion
+  // y tamaño de la ultima vez que el mouse estuvo dentro del area.
 }
 
 function mousePressed() {
   console.log('PRESSED');
   fill(color(0,0,0,50));
-  mouse_saved.x = mouseX;
-  mouse_saved.y = mouseY;
+  last_click.x = mouseX;
+  last_click.y = mouseY;
+
+  mouse_pressed_soup = mouseIsInsideSoup();
+}
+
+function mouseIsInsideSoup() {
+  if (mouse.x > soup_start_point.x 
+      && mouse.x < (soup_start_point.x + soup_size.x) 
+      && mouse.y > soup_start_point.y 
+      && mouse.y < (soup_start_point.y + soup_size.y)) { // el mouse esta dentro de la sopa de letras.
+
+    return true;
+  } else {
+    return false;
+  }
 }
 
 function mouseReleased() {
   console.log('RELEASED');
+
+  mouse_pressed_soup = false;
 }
 
 
