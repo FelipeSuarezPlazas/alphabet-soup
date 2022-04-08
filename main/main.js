@@ -40,8 +40,13 @@ function initVars() {
   ];
 
 
+
   mouse = createVector(0, 0);
   last_click = createVector(0, 0);
+
+  mouse_pressed_soup = false;
+  last_rect = {x: -10, y: -10, width: 0, height: 0};
+  last_canva_rotation = 0;
 
   angleMode(DEGREES);
   frameRate(30); 
@@ -196,33 +201,35 @@ function wordsPerColumn() {
 }
 
 
-mouse_pressed_soup = false;
-last_rect = {x: -10, y: -10, width: 0, height: 0};
-last_rotation = 0;
-
 
 function draw() {
   image(pg, 0, 0); // the entire background, soup, words.
-
   [mouse.x, mouse.y] = [mouseX, mouseY];
+
+
+
+  // perfecto, ahora lo que necesito es que el rectangulo
+  // solo pueda tener (8) rotaciones. No todas las que tenga el mouse.
+  // 0, 45, 90, 135, 180, 225, 270, 315.
+
+  let rotations = [0, 45, 90, 135, 180, 225, 270, 315];
+
+  // ok... yo de por si, ya tengo el numero de la rotacion...
+  // debo tener una lista con esas rotaciones, asi que haré un loop,
+  // y a la rotacion que más se acerque, pues esa es la que le paso al canva.
+
 
   if (mouse_pressed_soup && mouseIsPressed) {
     if (mouseIsInsideSoup()) {
       diff = mouse.sub(last_click);
-      translate(last_click);
-      last_rotation = atan2(diff.y, diff.x) - 90;
-      rotate(last_rotation);
-
       last_rect.height = 20+diff.mag();
-
-      rect(-10, -10, 20, last_rect.height, 20);
-
-    } else { // if while selecting a word, the mouse leave the soup area.
-      // in this point I need to show the rectangle but with the last position and size.
-      translate(last_click);
-      rotate(last_rotation);
-      rect(-10, -10, 20, last_rect.height, 20);
+      last_canva_rotation = atan2(diff.y, diff.x) - 90;
     }
+
+    // if mouse if not inside soup area but it was clicked inside.
+    translate(last_click);
+    rotate(last_canva_rotation);
+    rect(-10, -10, 20, last_rect.height, 20);
   }
 
 
