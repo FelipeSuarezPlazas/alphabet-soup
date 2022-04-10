@@ -2,79 +2,60 @@
 
 // -------------------------------------------------------------- ALPHABET SOUP.
 
+new p5();
 
-// Qué es el ser humano? que quiere el ser humano?
-// jaaaajaaaaaaajajajajajaja que carajos quierooo yooooo??????P
+// -------------------------------------------------------------- VARS.
 
+
+let TITLE_HEIGHT = 70;
+
+let CELL_SIZE = 25;
+let CELL_SIZE_DIAGONAL = createVector(CELL_SIZE, CELL_SIZE).mag();
+
+let SOUP_MARGIN = 20;
+let SOUP_LETTERS_AMOUNT = createVector(20, 20);
+let SOUP_AREA = createVector(SOUP_LETTERS_AMOUNT.x * CELL_SIZE, SOUP_LETTERS_AMOUNT.y * CELL_SIZE);
+let SOUP_START_POINT = createVector(SOUP_MARGIN + (SOUP_MARGIN/2), TITLE_HEIGHT + (SOUP_MARGIN+(SOUP_MARGIN/2)));
+let SOUP_START_POINT_CENTER = createVector(SOUP_START_POINT.x + (CELL_SIZE/2), SOUP_START_POINT.y + (CELL_SIZE/2));
+
+let SIDEBAR_SIZE = createVector(150, SOUP_AREA.y); // falta el margin.
+
+let CANVAS_SIZE = createVector(
+  SOUP_AREA.x + (SOUP_MARGIN*2) + SIDEBAR_SIZE.x,
+  SOUP_AREA.y + (SOUP_MARGIN*2) + TITLE_HEIGHT);
+
+
+let ROTATIONS = [90, 135, 180, 225, 270, 315, 360, 405, 450];
+let DIAGONAL_ROTATIONS = [135, 225, 315, 405];
+
+let ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
+let WORDS = ['Carro','Casa','Elefante','Sol','Cubo',
+    'Celular','Vaso','Almohada','Programar','Texto',];
+
+
+let RECTANGLE = {x: -(CELL_SIZE/2), y: -(CELL_SIZE/2), width: CELL_SIZE, height: CELL_SIZE, radius: 20};
+let RECT_COLOR = color(0,0,0,50);
+
+
+let last_click = createVector(0, 0);
+let last_height = 0;
+let last_rotation = 0;
+
+let mouse = createVector(0, 0);
+let mouse_pressed_soup = false;
 
 
 // -------------------------------------------------------------- FUNCTIONS.
 
-const ROTATIONS = [90, 135, 180, 225, 270, 315, 360, 405, 450];
-const DIAGONAL_ROTATIONS = [135, 225, 315, 405];
-
-
-function initVars() {
-  space_between_letters = 25;
-  title_height = 70;
-  letters_amount = createVector(20, 20);
-  cell_size = createVector(space_between_letters, space_between_letters);
-  soup_size = createVector(
-    letters_amount.x * (cell_size.x), 
-    letters_amount.x * (cell_size.y));
-
-  space_between_letters_diagonal = cell_size.mag(); // esta es la hipotenusa, la magnitud de
-
-  soup_margin = 20;
-  //soup_start_point = createVector(soup_margin + (soup_margin/2), title_height + (soup_margin+(soup_margin/2)));
-  soup_start_point = createVector(soup_margin + (soup_margin/2), title_height + (soup_margin+(soup_margin/2)));
-
-  sidebar_size = createVector(150, soup_size.y);
-
-  alphabet = 'abcdefghijklmnopqrstuvwxyz';
-  words = [
-    'Carro',
-    'Casa',
-    'Elefante',
-    'Sol',
-    'Cubo',
-    'Celular',
-    'Vaso',
-    'Almohada',
-    'Programar',
-    'Texto',
-  ];
-
-
-
-  mouse = createVector(0, 0);
-  last_click = createVector(0, 0);
-
-  mouse_pressed_soup = false;
-  last_rect = {x: -10, y: -10, width: 0, height: 0};
-  last_canva_rotation = 0;
-  rectangle = {x: -(space_between_letters/2), y: -(space_between_letters/2), width: space_between_letters, height: space_between_letters, ratio: 20};
-
-  angleMode(DEGREES);
-  frameRate(30); 
-}
-
-function initCanvas() {
-  let canvasSize = createVector(
-    soup_size.x + sidebar_size.x + (soup_margin*2),
-    soup_size.y + title_height + (soup_margin*2));
-
-  cnv = createCanvas(canvasSize.x, canvasSize.y);
-  cnv.parent('canva-game');
-
-  pg = createGraphics(canvasSize.x, canvasSize.y);
-}
 
 function setup() {
+  let CNV = createCanvas(CANVAS_SIZE.x, CANVAS_SIZE.y);
+  CNV.parent('canva-game');
 
-  initVars();
-  initCanvas();
+  angleMode(DEGREES);
+  frameRate(30);
 
+  pg = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
   pg.background('white');
   pg.fill('black');
 
@@ -82,239 +63,201 @@ function setup() {
   drawTitle();
   drawSidebar();
   drawAlphabetSoup();
-  
-  wordsPerColumn();
+  basicColumnAlphabetSoupAlgorithm();
 }
 
 function drawSeparatorLines() {
    // title line.
-  pg.line(0, title_height, width, title_height);
+  pg.line(0, TITLE_HEIGHT, width, TITLE_HEIGHT);
 
-  // line between soup and words.
-  pg.line(soup_size.x + (soup_margin*2), title_height, soup_size.x + (soup_margin*2), height);
+  // line between soup and WORDS.
+  pg.line(SOUP_AREA.x + (SOUP_MARGIN*2), TITLE_HEIGHT, SOUP_AREA.x + (SOUP_MARGIN*2), height);
 
-
-  for (let i = 0; i <= letters_amount.x; i++) {
+  // ----- draw soup columns.
+  for (let i = 0; i <= SOUP_LETTERS_AMOUNT.x; i++) {
     pg.line(
-      soup_start_point.x + (space_between_letters * i),
-      soup_start_point.y, 
-      soup_start_point.x + (space_between_letters * i), 
-      soup_start_point.y + soup_size.y);
+      SOUP_START_POINT.x + (CELL_SIZE * i),
+      SOUP_START_POINT.y, 
+      SOUP_START_POINT.x + (CELL_SIZE * i), 
+      SOUP_START_POINT.y + SOUP_AREA.y);
   }
 
-  for (let i = 0; i <= letters_amount.y; i++) {
+  // ----- draw soup rows.
+  for (let i = 0; i <= SOUP_LETTERS_AMOUNT.y; i++) {
     pg.line(
-      soup_start_point.x,
-      soup_start_point.y + (space_between_letters * i), 
-      soup_start_point.x + soup_size.x, 
-      soup_start_point.y + (space_between_letters * i));
+      SOUP_START_POINT.x,
+      SOUP_START_POINT.y + (CELL_SIZE * i), 
+      SOUP_START_POINT.x + SOUP_AREA.x, 
+      SOUP_START_POINT.y + (CELL_SIZE * i));
   }
 }
 
 function drawTitle() {
   pg.textSize(25);
   pg.textAlign(CENTER, CENTER);
-  pg.text('Sopa de letras', (soup_size.x + sidebar_size.x)/2, title_height/2 + 5);
+  pg.text('Sopa de letras', (SOUP_AREA.x + SIDEBAR_SIZE.x)/2, TITLE_HEIGHT/2 + 5);
 }
 
 function drawSidebar() {
   pg.textAlign(LEFT, CENTER);
   pg.textSize(15);
 
-  margin_words = createVector(20, 30);
+  let SIDEBAR_PADDING = createVector(20, 30);
 
-  const pos = createVector(
-    soup_size.x + (soup_margin*2) + margin_words.x,
-    title_height + margin_words.y);
+  let pos = createVector(
+    SOUP_AREA.x + (SOUP_MARGIN*2) + SIDEBAR_PADDING.x,
+    TITLE_HEIGHT + SIDEBAR_PADDING.y);
 
-  const space_between_words = 40;
+  let WORDS_MARGIN = 40;
 
-  for (word of words) {
+  for (word of WORDS) {
     pg.text('· ' + word, pos.x, pos.y);
-    pos.y += space_between_words
+    pos.y += WORDS_MARGIN;
   }
 }
 
 function drawAlphabetSoup() {
   pg.textAlign(CENTER, CENTER);
 
-  const row_limit = (space_between_letters * letters_amount.x) + soup_start_point.x;
-  const column_limit = (space_between_letters * letters_amount.y) + soup_start_point.y;
+  let ROW_LIMIT = SOUP_START_POINT.x + SOUP_AREA.x;
+  let COLUMN_LIMIT = SOUP_START_POINT.y + SOUP_AREA.y;
 
-  // LA LETRA DEBE SER DIBUJADA EN LA MITAD DE LA CELDA.
-  // Y CUANDO MIDE UNA CELDA?
-  let initial_point = createVector(
-    soup_start_point.x + (space_between_letters/2), soup_start_point.y + (space_between_letters/2)) // not the same as soup_start_point. This one is in the center of the cell
+  for (var x=SOUP_START_POINT_CENTER.x; x < ROW_LIMIT; x += CELL_SIZE) {
+    for (var y=SOUP_START_POINT_CENTER.y; y < COLUMN_LIMIT; y += CELL_SIZE) {
 
-  for (var x=initial_point.x; x < row_limit; x += space_between_letters) {
-    for (var y=initial_point.y; y < column_limit; y += space_between_letters) {
-      random_letter = randomLetter();
+      let letter_index = random(ALPHABET.length);
+      let random_letter = ALPHABET[Math.floor(letter_index)].toUpperCase();
+
       pg.text(random_letter, x, y);
     }
   }
 }
 
-function randomLetter() {
-  randomIndex = random(alphabet.length);
-  letter = alphabet.toUpperCase()[Math.floor(randomIndex)]
-  return letter;
-}
+function basicColumnAlphabetSoupAlgorithm() {
+  // ************************************************** THIS WAs DESIGNED TO BE MORE COLUMNS THAN WORDS ********
+  let random_columns = []
 
-function wordsPerColumn() {
-  console.log('esta brillando o no?');
-
-  columns_index = []
-  for (var i = 0; i < letters_amount.y; i++) {
-    columns_index[i] = i;
-    console.log(columns_index[i])
-  }
-
-  textAlign(CENTER, CENTER);
-  noStroke();
-
-  word_counter = 0;
-  words_copy = words.slice();
-
-  while (word_counter < words.length) {
-    random_column_index = Math.floor(random(0, columns_index.length));
-    console.log(columns_index[random_column_index], 'random_column_index');
-
-    pos = createVector(
-      (soup_start_point.x + (columns_index[random_column_index] * cell_size.x) - (cell_size.x/2)),
-      (soup_start_point.y) - (cell_size.y/2));
-    //square(pos.x, pos.y, cell_size.x);
-
-
-    // vamos con la primera palabra
-    word = words_copy.pop().toUpperCase();
-
-
-    // hagamos que la palabra este en cualquier parte de la columna.
-    // las letras en la columna - las letras en la palabra
-    // un numero aleatoreo entre ese rango
-    // y ese seria el punto de partida
-
-    column_random_start = Math.floor(random(0, letters_amount.y - word.length));
-
-    pos.y += (cell_size.y * column_random_start);
-
-    // for each letter of the word.
-    for (letter of word) {
-      // por cada uno de estos hay que crear un cuadrado blanco que tape la letra.
-      fill('white');
-      square(pos.x, pos.y, cell_size.x);
-
-      // ahora debo acomodar en cada celda cada letra de la palabra.
-      fill('black');
-      text(letter, pos.x + (cell_size.x/2), pos.y + (cell_size.y/2) );
-
-      pos.y += cell_size.y;
+  while (random_columns.length < WORDS.length) {
+    let random_index = Math.floor(random(SOUP_LETTERS_AMOUNT.x));
+    if (!random_columns.includes(random_index)) {
+      random_columns.push(random_index);
+      console.log(random_index, 'random column');
     }
-
-    columns_index.splice(random_column_index, 1);
-    word_counter += 1;
   }
+
+  random_columns.forEach( (random_column_index, index) => {
+    let WORD = WORDS[index].toUpperCase();
+    let RANDOM_COLUMN_POS = (random_column_index * CELL_SIZE);
+    let RANDOM_COLUMN_START_CELL = Math.round(random(0, (SOUP_LETTERS_AMOUNT.y - WORD.length) ));
+    let RANDOM_COLUMN_START_CELL_POS = (RANDOM_COLUMN_START_CELL * CELL_SIZE);
+    let cell_pos = RANDOM_COLUMN_START_CELL_POS;
+
+    for (letter of WORD) {
+      pg.fill('white');
+      pg.stroke('red');
+      pg.square(
+        SOUP_START_POINT.x + RANDOM_COLUMN_POS, 
+        SOUP_START_POINT.y + cell_pos,
+        CELL_SIZE);
+
+      pg.fill('black');
+      pg.text(letter, 
+        SOUP_START_POINT_CENTER.x + RANDOM_COLUMN_POS,
+        SOUP_START_POINT_CENTER.y + cell_pos);
+
+      cell_pos += CELL_SIZE;
+    }
+  })
 }
 
+function drawWordSelection() {
+  if (!mouse_pressed_soup) return;
+  
 
-// PARA PODER ENTENDER BIEN, TENGO QUE DIBUJAR LA REJILLA DE TODA LA SOPA DE LETRAS, ASIQ UE TENGO QUE PONER
-// LINEAS COMO UN BERRACO.
+  // update selection rotation and translation only if mouse still in soup area.
+  // if not in soup area, keep show selection with last variables.
+  if (isOnSoupArea(mouse)) {
+    let actual_height = 0;
+    let actual_rotation = 0;
 
-// para evitar ese bug, tendria que basarme no en la posicion del mouse
-// sino en el punto de inicio del rectangulo y su tamaño.
-// o sea, despues de que lo hago crecer, pero no ha renderisado, lo comparo.
+    // round angle to nearest 45 multiple.
+    // then save it on last_rotation.
+    let RECT_VECTOR = mouse.sub(last_click);
+    let RECT_VECTOR_ROTATION = atan2(RECT_VECTOR.y, RECT_VECTOR.x) + 270;
+    actual_rotation = Math.round(RECT_VECTOR_ROTATION / 45) * 45;
 
-// basicamente, a esa funcion debo pasarle un vector y ella determina si esta dentro de
-// la sopa de letras o no.
+    // round magnitud to nearest cell_unit multiple.     
+    // then save it on last_height.
+    let IS_DIAGONAL = DIAGONAL_ROTATIONS.includes(last_rotation);
+    let CELL_UNIT = IS_DIAGONAL ? CELL_SIZE_DIAGONAL : CELL_SIZE;
+    let CELL_UNITS_IN_MAGNITUD = Math.floor( (RECT_VECTOR.mag() + (CELL_UNIT / 2)) / CELL_UNIT);
+    let MAGNITUD_TO_CELL_UNIT = CELL_UNITS_IN_MAGNITUD * CELL_UNIT;
+    actual_height = RECTANGLE.height + MAGNITUD_TO_CELL_UNIT;
+
+
+    // la magnitud del vector no puede pasar ciertos limites
+    // basicamente esto es para arreglar el bug.
+    // pero desde donde se oprime y teniendo en cuenta el angulo de eset
+    // no puede pasar cierta magnitud por que o si no, se estaria saliendo del area de la sopa.
+
+    // o no le pongo un limite a la magnitud, si no que más bien veo si el vector
+    // que esta en la punta de la seleccion esta dentro del area o no.
+
+    // cual es el vector que esta en la punta de la seleccion?
+    // bueno.. es la posicion de last_click, apuntando a la direccion que ya tengo
+    // con la magnitud que tambien ya tengo.
+    // ese es el vector
+
+    // este es el vector con el que comprobamos que las variables esten dentro
+    // el vector que comprueba.
+    let check_point = p5.Vector.fromAngle(radians(actual_rotation + 90), actual_height - (CELL_SIZE/1.5));
+    check_point.add(last_click);
+
+    if (isOnSoupArea(check_point)) {
+      last_rotation = actual_rotation;
+      last_height = actual_height;
+
+      //circle(check_point.x, check_point.y, 5);
+    }
+  }
+
+  translate(last_click);
+  rotate(last_rotation);
+  rect(RECTANGLE.x, RECTANGLE.y, RECTANGLE.width, last_height, RECTANGLE.radius);
+}
 
 
 function draw() {
   image(pg, 0, 0);
+
+  // transform mouse positions to vector variable for Math purpouses.
   [mouse.x, mouse.y] = [mouseX, mouseY];
-
-  if (mouse_pressed_soup && mouseIsPressed) {
-    if (mouseIsInsideSoup(true)) {
-      diff = mouse.sub(last_click);
-      last_canva_rotation = atan2(diff.y, diff.x) + 270;
-
-      let final_rotation = ROTATIONS[0];
-
-      for (rotation of ROTATIONS) {
-        if (Math.abs(last_canva_rotation - rotation) < Math.abs(last_canva_rotation - final_rotation)) {
-          final_rotation = rotation;
-        }
-      }
-
-      console.log(final_rotation, DIAGONAL_ROTATIONS, 'LOOK AT THIS');
-      console.log( DIAGONAL_ROTATIONS.includes(final_rotation) );
-
-      let multiply = (DIAGONAL_ROTATIONS.includes(final_rotation)) ? space_between_letters_diagonal : space_between_letters;
-
-      // ***** ACORTAR ESTO Y PONERLO EN BUEN FORMATO.
-      last_rect.height = rectangle.height + (Math.floor((diff.mag() + (multiply / 2)) / multiply) * multiply);
-
-      // es un vector desde last_clicked hasta last_clicked + rect_height;
-
-      // necesito obtener el punto de last_clicked en la direccion del angulo, una magnitud de la altura de rect;
-
-      // tengo el punto de inicio
-      // tengo la direccion
-      // y tengo la magnitud
-
-      // necesito ese ultimo punto.
-
-      last_canva_rotation = final_rotation;
-    }
-    
-    // if mouse if not inside soup area but it was clicked inside.
-    translate(last_click);
-    rotate(last_canva_rotation);
-    rect(rectangle.x, rectangle.y, rectangle.width, last_rect.height); // 20 EDGE
-  }
+  drawWordSelection();
 }
 
 function mousePressed() {
   console.log('PRESSED');
-  fill(color(0,0,0,50));
-  
+  fill(RECT_COLOR);
 
-  mouse_pressed_soup = mouseIsInsideSoup(false);
+  // round mouse position to nearest cell_size_center multiple.
+  // then save it on last_click.
 
-
-  // cambiar esta funcion, es fuerza bruta.
+  mouse_pressed_soup = isOnSoupArea(mouse);
   if (mouse_pressed_soup) {
-    let minus = soup_start_point.copy().sub(mouse);
-    minus.x = Math.abs(minus.x);
-    minus.y = Math.abs(minus.y);
-    console.log(minus.x, minus.y, 'vector');
-
-    for (let i = 0; i < letters_amount.x; i++) {
-      console.log('ALLLAAAAA');
-      if (minus.x >= (space_between_letters*i) && minus.x <= (space_between_letters*(i+1))) {
-
-        for (let e = 0; e < letters_amount.y; e++) {
-          if (minus.y >= (space_between_letters*e) && minus.y <= (space_between_letters*(e+1))) {
-            // i es el numero de la columna en la que se encuentra.
-
-            last_click.x = soup_start_point.x + (space_between_letters / 2) + (i * space_between_letters);
-            last_click.y = soup_start_point.y + (space_between_letters / 2) + (e * space_between_letters);
-            
-            //last_click.x = soup_start_point.x + (space_between_letters / 2);
-            //last_click.y = soup_start_point.y + (space_between_letters / 2);
-            break;
-          }
-        }
-      }
-    }
+    let MOUSE_POS_IN_SOUP_AREA = p5.Vector.sub(mouse, SOUP_START_POINT_CENTER);
+    let CELL_UNITS_IN_MAGNITUD = p5.Vector.div(MOUSE_POS_IN_SOUP_AREA, CELL_SIZE);
+    CELL_UNITS_IN_MAGNITUD.x = Math.round(CELL_UNITS_IN_MAGNITUD.x);
+    CELL_UNITS_IN_MAGNITUD.y = Math.round(CELL_UNITS_IN_MAGNITUD.y);
+    let MAGNITUD_TO_CELL_UNIT = p5.Vector.mult(CELL_UNITS_IN_MAGNITUD, CELL_SIZE);
+    last_click = MAGNITUD_TO_CELL_UNIT.add(SOUP_START_POINT_CENTER);
   }
 }
 
-function mouseIsInsideSoup(strict) {
-  const plus = strict ? (space_between_letters/2) : 0;
-  if (mouse.x > soup_start_point.x + plus
-      && mouse.x < (soup_start_point.x + soup_size.x) - plus
-      && mouse.y > soup_start_point.y + plus
-      && mouse.y < (soup_start_point.y + soup_size.y) - plus) { // el mouse esta dentro de la sopa de letras.
+function isOnSoupArea(v) {
+  if (v.x > SOUP_START_POINT.x
+      && v.x < (SOUP_START_POINT.x + SOUP_AREA.x)
+      && v.y > SOUP_START_POINT.y
+      && v.y < (SOUP_START_POINT.y + SOUP_AREA.y)) { // el mouse esta dentro de la sopa de letras.
 
     return true;
   } else {
