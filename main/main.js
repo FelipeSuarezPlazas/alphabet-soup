@@ -15,7 +15,7 @@ let CELL_SIZE_DIAGONAL = createVector(CELL_SIZE, CELL_SIZE).mag();
 let SOUP_MARGIN = 20;
 let SOUP_LETTERS_AMOUNT = createVector(20, 20);
 let SOUP_AREA = createVector(SOUP_LETTERS_AMOUNT.x * CELL_SIZE, SOUP_LETTERS_AMOUNT.y * CELL_SIZE);
-let SOUP_START_POINT = createVector(SOUP_MARGIN + (SOUP_MARGIN/2), TITLE_HEIGHT + (SOUP_MARGIN+(SOUP_MARGIN/2)));
+let SOUP_START_POINT = createVector(SOUP_MARGIN, TITLE_HEIGHT + SOUP_MARGIN);
 let SOUP_START_POINT_CENTER = createVector(SOUP_START_POINT.x + (CELL_SIZE/2), SOUP_START_POINT.y + (CELL_SIZE/2));
 
 let SIDEBAR_SIZE = createVector(150, SOUP_AREA.y); // falta el margin.
@@ -32,6 +32,8 @@ let ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
 let WORDS = ['Carro','Casa','Elefante','Sol','Cubo',
     'Celular','Vaso','Almohada','Programar','Texto',];
 
+let word_cells = {};
+let mouse_cells = [];
 
 let RECTANGLE = {x: -(CELL_SIZE/2), y: -(CELL_SIZE/2), width: CELL_SIZE, height: CELL_SIZE, radius: 20};
 let RECT_COLOR = color(0,0,0,50);
@@ -47,8 +49,13 @@ let mouse = createVector(0, 0);
 let pressed_soup_area = false;
 
 
-let word_cells = {};
-let mouse_cells = [];
+
+let string_words_cell_ids = {};
+
+// esto no deberia ser un array, mas bien un diccionario
+// como cada llave es unica, habrian dos llaves con un mismo valor.
+
+
 
 
 // -------------------------------------------------------------- FUNCTIONS.
@@ -191,6 +198,11 @@ function basicAlphabetSoupColumnAlgorithm() {
     let CELL_TWO = createVector(random_column_index, final_cell);
     console.log(WORD, CELL_ONE, CELL_TWO, 'LOOOK AT THIS AND COMPARE');
     word_cells[WORD] = {cells: [CELL_ONE, CELL_TWO], selected: false};
+
+    let [cell_id1, cell_id2] = cellIDsToString(CELL_ONE, CELL_TWO)
+
+    string_words_cell_ids[cell_id1] = WORD;
+    string_words_cell_ids[cell_id2] = WORD;
   })
 }
 
@@ -259,7 +271,19 @@ function isOnSoupArea(v) {
   }
 }
 
-function fromVectorToCellID(vec) {
+// aqui debo pasar ambos? bueno... si, tecnicamente si. ambos debo pasarlos.
+
+function cellIDsToString(cell_id1, cell_id2) {
+  let str = '';
+  str += `${cell_id1.x}.${cell_id1.y}.${cell_id2.x}.${cell_id2.y}`
+
+  let str2 = '';
+  str2 += `${cell_id2.x}.${cell_id2.y}.${cell_id1.x}.${cell_id1.y}`
+
+  return [str, str2];
+}
+
+function vectorToCellID(vec) {
   // round vector position to nearest cell_size multiple.
   let POS_IN_SOUP_AREA = p5.Vector.sub(vec, SOUP_START_POINT_CENTER);
   let CELL_UNITS_IN_MAGNITUD = p5.Vector.div(POS_IN_SOUP_AREA, CELL_SIZE);
@@ -280,7 +304,7 @@ function mousePressed() {
 
   pressed_soup_area = isOnSoupArea(mouse);
   if (pressed_soup_area) {
-    let MOUSE_TO_CELL_ID = fromVectorToCellID(mouse)
+    let MOUSE_TO_CELL_ID = vectorToCellID(mouse)
     let MOUSE_TO_CELL_POSITION = p5.Vector.mult(MOUSE_TO_CELL_ID, CELL_SIZE);
     last_click = MOUSE_TO_CELL_POSITION.add(SOUP_START_POINT_CENTER);
 
@@ -292,7 +316,7 @@ function mousePressed() {
 function mouseReleased() {
   console.log('RELEASED');
   pressed_soup_area = false;
-  let LAST_SELECTED_CELL_ID = fromVectorToCellID(last_selected_cell_pos);
+  let LAST_SELECTED_CELL_ID = vectorToCellID(last_selected_cell_pos);
   console.log(LAST_SELECTED_CELL_ID, 'LAST_SELECTED_CELL_ID');
   mouse_cells.push(LAST_SELECTED_CELL_ID);
   let WORD_CELLS_KEYS = Object.keys(word_cells); // array with all the keys.
@@ -300,26 +324,32 @@ function mouseReleased() {
   console.log(mouse_cells[0], mouse_cells[1], 'NOW LOOK AT THISS');
   //console.log(mouse_cells[0], console.log(LAST_SELECTED_CELL_ID), 'NOW LOOK AT THISS');
 
-  let first_check;
-  for (word of WORD_CELLS_KEYS) {
-    first_check = false;
-    for (var i = 0; i < 2; i++) {
-      if (mouse_cells[i].equals(word_cells[word].cells[0]) || mouse_cells[i].equals(word_cells[word].cells[1])) {
-        if (first_check) { // this is the second always
-          if (!word_cells[word].selected) {
-            
-            selections.push()
-            selections.translate(last_click);
-            selections.rotate(last_rotation);
-            selections.rect(RECTANGLE.x, RECTANGLE.y, RECTANGLE.width, last_height, RECTANGLE.radius);
-            selections.pop();
-            word_cells[word].selected = true;
-            break;
-          }
-        }
-        first_check = true;
-      }
-    }
+  // necesito hacer esto de una forma mucho más eficiente.
+  // each word have two cell_ids
+  // so is there a word that have one of these cell_ids??
+
+  //un diccionario que contiene como llave todos los cell_ids de inicio
+  // con la palabra como valor
+  // y otro diccionario que contenga como llave los cell_ids, y
+  // la palabra como valor.
+
+  // voy a tener una lista, con todos los cell_ids en forma de string
+
+  // e.x - cell_id1.15.10.2
+  // e.x - cell_id10.2.1.15
+
+  let [MOUSE_CELL_ID_STRING, ignore] = cellIDsToString(mouse_cells[0], mouse_cells[1]);
+
+  if (string_words_cell_ids[MOUSE_CELL_ID_STRING]) {
+    // YA NO NECESITO EL SELECTED, SE PUEDE IR AL CARAJO.
+    selections.push()
+    selections.translate(last_click);
+    selections.rotate(last_rotation);
+    selections.rect(RECTANGLE.x, RECTANGLE.y, RECTANGLE.width, last_height, RECTANGLE.radius);
+    selections.pop();
+
+    string_words_cell_ids[MOUSE_CELL_ID_STRING] = undefined;
+    string_words_cell_ids[ignore] = undefined;
   }
 
   mouse_cells = [];
