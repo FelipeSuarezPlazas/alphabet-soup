@@ -35,14 +35,20 @@ let WORDS = ['Carro','Casa','Elefante','Sol','Cubo',
 
 let RECTANGLE = {x: -(CELL_SIZE/2), y: -(CELL_SIZE/2), width: CELL_SIZE, height: CELL_SIZE, radius: 20};
 let RECT_COLOR = color(0,0,0,50);
+let RECT_STROKE_COLOR = color('black')
 
 
 let last_click = createVector(0, 0);
 let last_height = 0;
 let last_rotation = 0;
+let last_selected_cell_pos = createVector(0, 0);
 
 let mouse = createVector(0, 0);
-let mouse_pressed_soup = false;
+let pressed_soup_area = false;
+
+
+let word_cells = {};
+let mouse_cells = [];
 
 
 // -------------------------------------------------------------- FUNCTIONS.
@@ -59,11 +65,17 @@ function setup() {
   pg.background('white');
   pg.fill('black');
 
+  selections = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
+  selections.angleMode(DEGREES);
+  selections.fill(RECT_COLOR);
+  selections.stroke(RECT_STROKE_COLOR);
+  //selections.frameRate(30);
+
   drawSeparatorLines();
   drawTitle();
   drawSidebar();
   drawAlphabetSoup();
-  basicColumnAlphabetSoupAlgorithm();
+  basicAlphabetSoupColumnAlgorithm();
 }
 
 function drawSeparatorLines() {
@@ -133,8 +145,8 @@ function drawAlphabetSoup() {
   }
 }
 
-function basicColumnAlphabetSoupAlgorithm() {
-  // ************************************************** THIS WAs DESIGNED TO BE MORE COLUMNS THAN WORDS ********
+function basicAlphabetSoupColumnAlgorithm() {
+  // ************************************************** THIS WAS DESIGNED TO BE MORE COLUMNS THAN WORDS ********
   let random_columns = []
 
   while (random_columns.length < WORDS.length) {
@@ -147,9 +159,15 @@ function basicColumnAlphabetSoupAlgorithm() {
 
   random_columns.forEach( (random_column_index, index) => {
     let WORD = WORDS[index].toUpperCase();
+    // guardar esta palabra con sus dos celdas.
+    // y con un bool que me indique si ya se seleccionó
+
+
+
     let RANDOM_COLUMN_POS = (random_column_index * CELL_SIZE);
     let RANDOM_COLUMN_START_CELL = Math.round(random(0, (SOUP_LETTERS_AMOUNT.y - WORD.length) ));
     let RANDOM_COLUMN_START_CELL_POS = (RANDOM_COLUMN_START_CELL * CELL_SIZE);
+    let final_cell = RANDOM_COLUMN_START_CELL - 1;
     let cell_pos = RANDOM_COLUMN_START_CELL_POS;
 
     for (letter of WORD) {
@@ -166,13 +184,18 @@ function basicColumnAlphabetSoupAlgorithm() {
         SOUP_START_POINT_CENTER.y + cell_pos);
 
       cell_pos += CELL_SIZE;
+      final_cell += 1;
     }
+
+    let CELL_ONE = createVector(random_column_index, RANDOM_COLUMN_START_CELL);
+    let CELL_TWO = createVector(random_column_index, final_cell);
+    console.log(WORD, CELL_ONE, CELL_TWO, 'LOOOK AT THIS AND COMPARE');
+    word_cells[WORD] = {cells: [CELL_ONE, CELL_TWO], selected: false};
   })
 }
 
 function drawWordSelection() {
-  if (!mouse_pressed_soup) return;
-  
+  if (!pressed_soup_area) return;
 
   // update selection rotation and translation only if mouse still in soup area.
   // if not in soup area, keep show selection with last variables.
@@ -195,64 +218,35 @@ function drawWordSelection() {
     actual_height = RECTANGLE.height + MAGNITUD_TO_CELL_UNIT;
 
 
-    // la magnitud del vector no puede pasar ciertos limites
-    // basicamente esto es para arreglar el bug.
-    // pero desde donde se oprime y teniendo en cuenta el angulo de eset
-    // no puede pasar cierta magnitud por que o si no, se estaria saliendo del area de la sopa.
-
-    // o no le pongo un limite a la magnitud, si no que más bien veo si el vector
-    // que esta en la punta de la seleccion esta dentro del area o no.
-
-    // cual es el vector que esta en la punta de la seleccion?
-    // bueno.. es la posicion de last_click, apuntando a la direccion que ya tengo
-    // con la magnitud que tambien ya tengo.
-    // ese es el vector
-
-    // este es el vector con el que comprobamos que las variables esten dentro
-    // el vector que comprueba.
+    // check if the magnitude of the selection is contained in soup area.
     let check_point = p5.Vector.fromAngle(radians(actual_rotation + 90), actual_height - (CELL_SIZE/1.5));
     check_point.add(last_click);
 
     if (isOnSoupArea(check_point)) {
       last_rotation = actual_rotation;
       last_height = actual_height;
-
-      //circle(check_point.x, check_point.y, 5);
+      last_selected_cell_pos = p5.Vector.fromAngle(radians(last_rotation + 90), last_height - (CELL_SIZE/1.5));
+      last_selected_cell_pos.add(last_click);
     }
-  }
 
+    //circle(check_point.x, check_point.y, 5);
+  }
+  circle(last_selected_cell_pos.x, last_selected_cell_pos.y, 5);
   translate(last_click);
   rotate(last_rotation);
   rect(RECTANGLE.x, RECTANGLE.y, RECTANGLE.width, last_height, RECTANGLE.radius);
 }
 
-
 function draw() {
   image(pg, 0, 0);
+  image(selections, 0, 0);
 
   // transform mouse positions to vector variable for Math purpouses.
   [mouse.x, mouse.y] = [mouseX, mouseY];
   drawWordSelection();
 }
 
-function mousePressed() {
-  console.log('PRESSED');
-  fill(RECT_COLOR);
-
-  // round mouse position to nearest cell_size_center multiple.
-  // then save it on last_click.
-
-  mouse_pressed_soup = isOnSoupArea(mouse);
-  if (mouse_pressed_soup) {
-    let MOUSE_POS_IN_SOUP_AREA = p5.Vector.sub(mouse, SOUP_START_POINT_CENTER);
-    let CELL_UNITS_IN_MAGNITUD = p5.Vector.div(MOUSE_POS_IN_SOUP_AREA, CELL_SIZE);
-    CELL_UNITS_IN_MAGNITUD.x = Math.round(CELL_UNITS_IN_MAGNITUD.x);
-    CELL_UNITS_IN_MAGNITUD.y = Math.round(CELL_UNITS_IN_MAGNITUD.y);
-    let MAGNITUD_TO_CELL_UNIT = p5.Vector.mult(CELL_UNITS_IN_MAGNITUD, CELL_SIZE);
-    last_click = MAGNITUD_TO_CELL_UNIT.add(SOUP_START_POINT_CENTER);
-  }
-}
-
+// return a bool if vector is inside de soup area.
 function isOnSoupArea(v) {
   if (v.x > SOUP_START_POINT.x
       && v.x < (SOUP_START_POINT.x + SOUP_AREA.x)
@@ -265,11 +259,87 @@ function isOnSoupArea(v) {
   }
 }
 
+function fromVectorToCellID(vec) {
+  // round vector position to nearest cell_size multiple.
+  let POS_IN_SOUP_AREA = p5.Vector.sub(vec, SOUP_START_POINT_CENTER);
+  let CELL_UNITS_IN_MAGNITUD = p5.Vector.div(POS_IN_SOUP_AREA, CELL_SIZE);
+  CELL_UNITS_IN_MAGNITUD.x = Math.round(CELL_UNITS_IN_MAGNITUD.x);
+  CELL_UNITS_IN_MAGNITUD.y = Math.round(CELL_UNITS_IN_MAGNITUD.y);
+
+  let CELL_ID = CELL_UNITS_IN_MAGNITUD
+  console.log(CELL_ID, 'CELL_ID')
+  return CELL_ID;
+}
+
+function mousePressed() {
+  console.log('PRESSED');
+  fill(RECT_COLOR);
+
+  // transform mouse position to cell position.
+  // then save it on last_click.
+
+  pressed_soup_area = isOnSoupArea(mouse);
+  if (pressed_soup_area) {
+    let MOUSE_TO_CELL_ID = fromVectorToCellID(mouse)
+    let MOUSE_TO_CELL_POSITION = p5.Vector.mult(MOUSE_TO_CELL_ID, CELL_SIZE);
+    last_click = MOUSE_TO_CELL_POSITION.add(SOUP_START_POINT_CENTER);
+
+    //console.log(MOUSE_TO_CELL_ID, 'look at this');
+    mouse_cells.push(MOUSE_TO_CELL_ID);
+  }
+}
+
 function mouseReleased() {
   console.log('RELEASED');
+  pressed_soup_area = false;
+  let LAST_SELECTED_CELL_ID = fromVectorToCellID(last_selected_cell_pos);
+  console.log(LAST_SELECTED_CELL_ID, 'LAST_SELECTED_CELL_ID');
+  mouse_cells.push(LAST_SELECTED_CELL_ID);
+  let WORD_CELLS_KEYS = Object.keys(word_cells); // array with all the keys.
 
-  mouse_pressed_soup = false;
+  console.log(mouse_cells[0], mouse_cells[1], 'NOW LOOK AT THISS');
+  //console.log(mouse_cells[0], console.log(LAST_SELECTED_CELL_ID), 'NOW LOOK AT THISS');
+
+  let first_check;
+  for (word of WORD_CELLS_KEYS) {
+    first_check = false;
+    for (var i = 0; i < 2; i++) {
+      if (mouse_cells[i].equals(word_cells[word].cells[0]) || mouse_cells[i].equals(word_cells[word].cells[1])) {
+        if (first_check) { // this is the second always
+          if (!word_cells[word].selected) {
+            
+            selections.push()
+            selections.translate(last_click);
+            selections.rotate(last_rotation);
+            selections.rect(RECTANGLE.x, RECTANGLE.y, RECTANGLE.width, last_height, RECTANGLE.radius);
+            selections.pop();
+            word_cells[word].selected = true;
+            break;
+          }
+        }
+        first_check = true;
+      }
+    }
+  }
+
+  mouse_cells = [];
 }
+
+
+
+// cada palabra comienza en una celda y termina en una celda.
+
+// si el mouse comienza en una celda y termina en una celda igual a la de una de las
+// palabras, entonces la seleccion de guarda y se muestra siempre.
+
+// es todo.
+
+// cada palabra tiene dos celdas.
+// cada celda tiene un vector.
+
+// la seleccion inicia y termina en una celda.
+
+// si esas celdas coinciden con las celdas de alguna palabra, la selección se queda por siempre.
 
 
 
