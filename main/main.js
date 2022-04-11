@@ -109,8 +109,15 @@ function setup() {
   drawTitle();
   drawSidebar();
   drawAlphabetSoup();
-  //basicAlphabetSoupColumnAlgorithm();
-  alphabetSoupRandomAlgorithm();
+  basicAlphabetSoupColumnAlgorithm();
+  //alphabetSoupRandomAlgorithm();
+
+
+  // podria hacerlo a fuerza bruta, poniendo todos los cell_ids en una lista
+  // y si se topa con alguna, entonces volver a repetirlo.
+
+  // tendría que a medida que los voy añadiendo, los voy comparando, 
+  // basicamente, necesito
 }
 
 function drawSeparatorLines() {
@@ -235,16 +242,16 @@ function alphabetSoupRandomAlgorithm() {
   for (word of WORDS) {
     let WORD = word.toUpperCase();
 
-    console.log('1');
+    //console.log('1');
 
     let random_cell_ids = [];
     let RANDOM_CELL_ID = createVector(0, 0);
 
     let repeat;
     do {
-      console.log('2');
+      //console.log('2');
       do {
-        console.log('3');
+        //console.log('3');
         repeat = false;
 
         RANDOM_CELL_ID.x = Math.floor(random(SOUP_LETTERS_AMOUNT.x));
@@ -256,8 +263,11 @@ function alphabetSoupRandomAlgorithm() {
           }
         })
       } while (repeat)
-      console.log('4');
+      //console.log('4');
       repeat = false;
+
+      console.log(WORD, 'WORD');
+      console.log(RANDOM_CELL_ID, 'RANDOM_CELL_ID');
 
       let RANDOM_ROTATION = random(ROTATIONS);
       let RANDOM_SOUP_DIRECTION = ROTATION_TO_SOUP_DIRECTION[RANDOM_ROTATION];
@@ -266,13 +276,14 @@ function alphabetSoupRandomAlgorithm() {
       let END_CELL_ID = p5.Vector.add(CELL_IDS_MAGNITUDE, RANDOM_CELL_ID);
 
       console.log('5');
+      console.log(END_CELL_ID, 'END_CELL_ID');
 
       if (END_CELL_ID.x < 0 || END_CELL_ID.x > SOUP_LETTERS_AMOUNT.x-1 ||
           END_CELL_ID.y < 0 || END_CELL_ID.y > SOUP_LETTERS_AMOUNT.y-1) {
         console.log('6');
         repeat = true;
       } else {
-        console.log('7');
+        //console.log('7');
         random_cell_ids.push(RANDOM_CELL_ID);
 
         // necesito una posicion que cambie, algo asi como una posicion ancual
@@ -281,19 +292,19 @@ function alphabetSoupRandomAlgorithm() {
         //let IS_DIAGONAL = DIAGONAL_ROTATIONS.includes(RANDOM_ROTATION);
         //let CELL_UNIT = IS_DIAGONAL ? CELL_SIZE_DIAGONAL : CELL_SIZE;
 
-        let START_CELL_ID = RANDOM_CELL_ID;
-        let actual_cell_id = RANDOM_CELL_ID;
+        let START_CELL_ID = RANDOM_CELL_ID.copy();
+        let actual_cell_id = RANDOM_CELL_ID.copy();
         actual_cell_id.sub(RANDOM_SOUP_DIRECTION);
         //p5.Vector.mult(RANDOM_SOUP_DIRECTION * CELL_SIZE);
         //p5.Vector.add(actual_cell_id * CELL_UNIT);
         console.log('8');
         console.log(START_CELL_ID, CELL_SIZE);
-        let actual_cell_id_pos = p5.Vector.mult(START_CELL_ID * CELL_SIZE); // ** ERROR ** v.copy is not a function.
+        let actual_cell_id_pos = p5.Vector.mult(START_CELL_ID, CELL_SIZE); // ** ERROR ** v.copy is not a function.
 
         console.log(WORD);
 
         for (letter of WORD) {
-          console.log('9');
+          //console.log('9');
           pg.fill('white');
           pg.stroke('red');
           pg.square(
@@ -306,20 +317,20 @@ function alphabetSoupRandomAlgorithm() {
             SOUP_START_POINT_CENTER.x + actual_cell_id_pos.x,
             SOUP_START_POINT_CENTER.y + actual_cell_id_pos.y);
 
-          console.log('10');
+          //console.log('10');
 
-          actual_cell_id_pos.add(RANDOM_SOUP_DIRECTION);
+          actual_cell_id_pos.add(p5.Vector.mult(RANDOM_SOUP_DIRECTION, CELL_SIZE));
           actual_cell_id.add(RANDOM_SOUP_DIRECTION);
         }
 
-        console.log('11');
+        //console.log('11');
 
         let CELL_ONE = createVector(START_CELL_ID.x, START_CELL_ID.y);
         let CELL_TWO = createVector(actual_cell_id.x, actual_cell_id.y);
 
         let [cell_id1, cell_id2] = cellIDsToString(CELL_ONE, CELL_TWO)
 
-        console.log('12');
+        //console.log('12');
 
         string_words_cell_ids[cell_id1] = WORD;
         string_words_cell_ids[cell_id2] = WORD;
