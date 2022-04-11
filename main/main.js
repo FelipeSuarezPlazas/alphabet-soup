@@ -28,17 +28,31 @@ let CANVAS_SIZE = createVector(
 let ROTATIONS = [90, 135, 180, 225, 270, 315, 360, 405, 450];
 let DIAGONAL_ROTATIONS = [135, 225, 315, 405];
 
+let ROTATION_TO_SOUP_DIRECTION = {
+  90: createVector(-1, 0),
+  450: createVector(-1, 0),
+  270: createVector(1, 0),
+  180: createVector(0, -1),
+  360: createVector(0, 1),
+  135: createVector(-1, -1),
+  315: createVector(1, 1),
+  225: createVector(1, -1),
+  405: createVector(-1, 1),
+}
+
 let ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
 let WORDS = ['Carro','Casa','Elefante','Sol','Cubo',
     'Celular','Vaso','Almohada','Programar','Texto',];
 
-let word_cells = {};
-let mouse_cells = [];
 
 let RECTANGLE = {x: -(CELL_SIZE/2), y: -(CELL_SIZE/2), width: CELL_SIZE, height: CELL_SIZE, radius: 20};
 let RECT_COLOR = color(0,0,0,50);
 let RECT_STROKE_COLOR = color('black')
 
+let UNDERLINE = {x1: 0, y1: 0, x2: SIDEBAR_SIZE.x*.6, y2: 0};
+let UNDERLINE_COLOR = color('black');
+let UNDERLINE_STROKE_COLOR = color(0,0,0,50)
+let UNDERLNE_STROKE_WEIGHT = 8;
 
 let last_click = createVector(0, 0);
 let last_height = 0;
@@ -48,12 +62,20 @@ let last_selected_cell_pos = createVector(0, 0);
 let mouse = createVector(0, 0);
 let pressed_soup_area = false;
 
-
-
+let mouse_cells = [];
 let string_words_cell_ids = {};
+let sidebar_word_positions = {};
 
-// esto no deberia ser un array, mas bien un diccionario
-// como cada llave es unica, habrian dos llaves con un mismo valor.
+
+// una vez el jugador completa todas las palabras, el juego debe reiniciarce
+// o al menos debe haber un boton que reinicie todo.
+
+
+// perfecto, solo falta el algoritmo aleatoreo y la sopa de letras
+// estaria terminada.
+
+// ok, entonces. Cómo voy a hacerlo.
+// debo ubicar las palabras, sin que se cruzen unas con otras, que cada una tenga su propio espacio
 
 
 
@@ -78,11 +100,17 @@ function setup() {
   selections.stroke(RECT_STROKE_COLOR);
   //selections.frameRate(30);
 
+  underlines = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
+  underlines.fill(RECT_COLOR);
+  underlines.stroke(RECT_STROKE_COLOR);
+  underlines.strokeWeight(UNDERLNE_STROKE_WEIGHT);
+
   drawSeparatorLines();
   drawTitle();
   drawSidebar();
   drawAlphabetSoup();
-  basicAlphabetSoupColumnAlgorithm();
+  //basicAlphabetSoupColumnAlgorithm();
+  alphabetSoupRandomAlgorithm();
 }
 
 function drawSeparatorLines() {
@@ -131,6 +159,9 @@ function drawSidebar() {
 
   for (word of WORDS) {
     pg.text('· ' + word, pos.x, pos.y);
+
+    sidebar_word_positions[word.toUpperCase()] = pos.copy();
+
     pos.y += WORDS_MARGIN;
   }
 }
@@ -166,11 +197,7 @@ function basicAlphabetSoupColumnAlgorithm() {
 
   random_columns.forEach( (random_column_index, index) => {
     let WORD = WORDS[index].toUpperCase();
-    // guardar esta palabra con sus dos celdas.
-    // y con un bool que me indique si ya se seleccionó
-
-
-
+    
     let RANDOM_COLUMN_POS = (random_column_index * CELL_SIZE);
     let RANDOM_COLUMN_START_CELL = Math.round(random(0, (SOUP_LETTERS_AMOUNT.y - WORD.length) ));
     let RANDOM_COLUMN_START_CELL_POS = (RANDOM_COLUMN_START_CELL * CELL_SIZE);
@@ -196,14 +223,112 @@ function basicAlphabetSoupColumnAlgorithm() {
 
     let CELL_ONE = createVector(random_column_index, RANDOM_COLUMN_START_CELL);
     let CELL_TWO = createVector(random_column_index, final_cell);
-    console.log(WORD, CELL_ONE, CELL_TWO, 'LOOOK AT THIS AND COMPARE');
-    word_cells[WORD] = {cells: [CELL_ONE, CELL_TWO], selected: false};
 
     let [cell_id1, cell_id2] = cellIDsToString(CELL_ONE, CELL_TWO)
 
     string_words_cell_ids[cell_id1] = WORD;
     string_words_cell_ids[cell_id2] = WORD;
   })
+}
+
+function alphabetSoupRandomAlgorithm() {
+  for (word of WORDS) {
+    let WORD = word.toUpperCase();
+
+    console.log('1');
+
+    let random_cell_ids = [];
+    let RANDOM_CELL_ID = createVector(0, 0);
+
+    let repeat;
+    do {
+      console.log('2');
+      do {
+        console.log('3');
+        repeat = false;
+
+        RANDOM_CELL_ID.x = Math.floor(random(SOUP_LETTERS_AMOUNT.x));
+        RANDOM_CELL_ID.y = Math.floor(random(SOUP_LETTERS_AMOUNT.y));
+
+        random_cell_ids.forEach(cell_id => {
+          if (RANDOM_CELL_ID.equals(cell_id)) {
+            repeat = true;
+          }
+        })
+      } while (repeat)
+      console.log('4');
+      repeat = false;
+
+      let RANDOM_ROTATION = random(ROTATIONS);
+      let RANDOM_SOUP_DIRECTION = ROTATION_TO_SOUP_DIRECTION[RANDOM_ROTATION];
+
+      let CELL_IDS_MAGNITUDE = p5.Vector.mult(RANDOM_SOUP_DIRECTION, word.length);
+      let END_CELL_ID = p5.Vector.add(CELL_IDS_MAGNITUDE, RANDOM_CELL_ID);
+
+      console.log('5');
+
+      if (END_CELL_ID.x < 0 || END_CELL_ID.x > SOUP_LETTERS_AMOUNT.x-1 ||
+          END_CELL_ID.y < 0 || END_CELL_ID.y > SOUP_LETTERS_AMOUNT.y-1) {
+        console.log('6');
+        repeat = true;
+      } else {
+        console.log('7');
+        random_cell_ids.push(RANDOM_CELL_ID);
+
+        // necesito una posicion que cambie, algo asi como una posicion ancual
+
+        // si es diagonal o no, de eso depende mucho
+        //let IS_DIAGONAL = DIAGONAL_ROTATIONS.includes(RANDOM_ROTATION);
+        //let CELL_UNIT = IS_DIAGONAL ? CELL_SIZE_DIAGONAL : CELL_SIZE;
+
+        let START_CELL_ID = RANDOM_CELL_ID;
+        let actual_cell_id = RANDOM_CELL_ID;
+        actual_cell_id.sub(RANDOM_SOUP_DIRECTION);
+        //p5.Vector.mult(RANDOM_SOUP_DIRECTION * CELL_SIZE);
+        //p5.Vector.add(actual_cell_id * CELL_UNIT);
+        console.log('8');
+        console.log(START_CELL_ID, CELL_SIZE);
+        let actual_cell_id_pos = p5.Vector.mult(START_CELL_ID * CELL_SIZE); // ** ERROR ** v.copy is not a function.
+
+        console.log(WORD);
+
+        for (letter of WORD) {
+          console.log('9');
+          pg.fill('white');
+          pg.stroke('red');
+          pg.square(
+            SOUP_START_POINT.x + actual_cell_id_pos.x,
+            SOUP_START_POINT.y + actual_cell_id_pos.y,
+            CELL_SIZE);
+
+          pg.fill('black');
+          pg.text(letter, 
+            SOUP_START_POINT_CENTER.x + actual_cell_id_pos.x,
+            SOUP_START_POINT_CENTER.y + actual_cell_id_pos.y);
+
+          console.log('10');
+
+          actual_cell_id_pos.add(RANDOM_SOUP_DIRECTION);
+          actual_cell_id.add(RANDOM_SOUP_DIRECTION);
+        }
+
+        console.log('11');
+
+        let CELL_ONE = createVector(START_CELL_ID.x, START_CELL_ID.y);
+        let CELL_TWO = createVector(actual_cell_id.x, actual_cell_id.y);
+
+        let [cell_id1, cell_id2] = cellIDsToString(CELL_ONE, CELL_TWO)
+
+        console.log('12');
+
+        string_words_cell_ids[cell_id1] = WORD;
+        string_words_cell_ids[cell_id2] = WORD;
+      }
+
+      console.log('13');
+    } while (repeat)
+    console.log('14');
+  }
 }
 
 function drawWordSelection() {
@@ -252,6 +377,7 @@ function drawWordSelection() {
 function draw() {
   image(pg, 0, 0);
   image(selections, 0, 0);
+  image(underlines, 0, 0);
 
   // transform mouse positions to vector variable for Math purpouses.
   [mouse.x, mouse.y] = [mouseX, mouseY];
@@ -316,43 +442,38 @@ function mousePressed() {
 function mouseReleased() {
   console.log('RELEASED');
   pressed_soup_area = false;
+
   let LAST_SELECTED_CELL_ID = vectorToCellID(last_selected_cell_pos);
-  console.log(LAST_SELECTED_CELL_ID, 'LAST_SELECTED_CELL_ID');
   mouse_cells.push(LAST_SELECTED_CELL_ID);
-  let WORD_CELLS_KEYS = Object.keys(word_cells); // array with all the keys.
 
-  console.log(mouse_cells[0], mouse_cells[1], 'NOW LOOK AT THISS');
-  //console.log(mouse_cells[0], console.log(LAST_SELECTED_CELL_ID), 'NOW LOOK AT THISS');
-
-  // necesito hacer esto de una forma mucho más eficiente.
-  // each word have two cell_ids
-  // so is there a word that have one of these cell_ids??
-
-  //un diccionario que contiene como llave todos los cell_ids de inicio
-  // con la palabra como valor
-  // y otro diccionario que contenga como llave los cell_ids, y
-  // la palabra como valor.
-
-  // voy a tener una lista, con todos los cell_ids en forma de string
-
-  // e.x - cell_id1.15.10.2
-  // e.x - cell_id10.2.1.15
-
+  //console.log(mouse_cells[0], mouse_cells[1], 'NOW LOOK AT THISS');
+  console.log('one');
   let [MOUSE_CELL_ID_STRING, ignore] = cellIDsToString(mouse_cells[0], mouse_cells[1]);
 
   if (string_words_cell_ids[MOUSE_CELL_ID_STRING]) {
-    // YA NO NECESITO EL SELECTED, SE PUEDE IR AL CARAJO.
     selections.push()
     selections.translate(last_click);
     selections.rotate(last_rotation);
     selections.rect(RECTANGLE.x, RECTANGLE.y, RECTANGLE.width, last_height, RECTANGLE.radius);
     selections.pop();
 
+
+    let word = string_words_cell_ids[MOUSE_CELL_ID_STRING];
+
+
+    let UNDERLINE_POS =  sidebar_word_positions[word];
+    underlines.push()
+    underlines.translate(UNDERLINE_POS);
+    underlines.line(UNDERLINE.x1, UNDERLINE.y1, UNDERLINE.x2, UNDERLINE.y2);
+    underlines.pop();
+
     string_words_cell_ids[MOUSE_CELL_ID_STRING] = undefined;
     string_words_cell_ids[ignore] = undefined;
   }
 
   mouse_cells = [];
+
+  console.log('two');
 }
 
 
