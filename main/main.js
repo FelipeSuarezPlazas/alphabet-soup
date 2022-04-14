@@ -46,13 +46,14 @@ let WORDS = ['Carro','Casa','Elefante','Sol','Cubo',
 
 
 let RECTANGLE = {x: -(CELL_SIZE/2), y: -(CELL_SIZE/2), width: CELL_SIZE, height: CELL_SIZE, radius: 20};
-let RECT_COLOR = color(0,0,0,50);
+let RECT_COLOR = color(0,0,250,50);
+let RECT_COLOR_COMPLETED = color(0,250,0,50);
 let RECT_STROKE_COLOR = color('black')
 
 let UNDERLINE = {x1: 0, y1: 0, x2: SIDEBAR_SIZE.x*.6, y2: 0};
 let UNDERLINE_COLOR = color('black');
 let UNDERLINE_STROKE_COLOR = color(0,0,0,50)
-let UNDERLNE_STROKE_WEIGHT = 8;
+let UNDERLNE_STROKE_WEIGHT = 4;
 
 let last_click = createVector(0, 0);
 let last_height = 0;
@@ -89,18 +90,38 @@ function setup() {
 
   angleMode(DEGREES);
   frameRate(30);
+  restartGame();
+
+  button = createButton('RESTART GAME');
+  button.position(100, 100);
+  button.mousePressed(restartGame);
+
+  
+
+}
+
+function restartGame() {
+  mouse_cells = [];
+  string_words_cell_ids = {};
+  sidebar_word_positions = {};
 
   pg = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
+  selections = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
+  underlines = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
+
+
+  pg.clear();
+  selections.clear();
+  underlines.clear();
+
   pg.background('white');
   pg.fill('black');
 
-  selections = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
   selections.angleMode(DEGREES);
-  selections.fill(RECT_COLOR);
+  selections.fill(RECT_COLOR_COMPLETED);
   selections.stroke(RECT_STROKE_COLOR);
   //selections.frameRate(30);
 
-  underlines = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
   underlines.fill(RECT_COLOR);
   underlines.stroke(RECT_STROKE_COLOR);
   underlines.strokeWeight(UNDERLNE_STROKE_WEIGHT);
@@ -111,13 +132,6 @@ function setup() {
   drawAlphabetSoup();
   basicAlphabetSoupColumnAlgorithm();
   //alphabetSoupRandomAlgorithm();
-
-
-  // podria hacerlo a fuerza bruta, poniendo todos los cell_ids en una lista
-  // y si se topa con alguna, entonces volver a repetirlo.
-
-  // tendría que a medida que los voy añadiendo, los voy comparando, 
-  // basicamente, necesito
 }
 
 function drawSeparatorLines() {
@@ -149,7 +163,7 @@ function drawSeparatorLines() {
 function drawTitle() {
   pg.textSize(25);
   pg.textAlign(CENTER, CENTER);
-  pg.text('Sopa de letras', (SOUP_AREA.x + SIDEBAR_SIZE.x)/2, TITLE_HEIGHT/2 + 5);
+  pg.text('FIND ALL THE WORDS IN THE ALPHABET SOUP', (SOUP_AREA.x + SIDEBAR_SIZE.x)/2, TITLE_HEIGHT/2 + 5);
 }
 
 function drawSidebar() {
@@ -486,6 +500,8 @@ function mouseReleased() {
 
   console.log('two');
 }
+
+
 
 
 
