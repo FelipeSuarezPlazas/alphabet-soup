@@ -7,13 +7,6 @@ body {
 }
 
 .container {
-      display: flex;
-      flex-direction: row;
-      justify-content: space-evenly;
-      align-items: center;
-}
-
-.item {
-      background-color: white;
-      height: 5rem;
+      display: grid;
+      place-items: center;
 }

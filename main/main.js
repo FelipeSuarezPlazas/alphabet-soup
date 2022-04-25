@@ -42,7 +42,7 @@ let ROTATION_TO_SOUP_DIRECTION = {
 
 let ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
 let WORDS = ['nombre', 'esquina', 'teclado', 'color', 'estafa',
-  'cigarrillos', 'mouse', 'camara', 'libro', 'esfero'];
+  'cigarrillo', 'limon', 'camara', 'libro', 'esfero'];
 
 
 let RECTANGLE = {x: -(CELL_SIZE/2), y: -(CELL_SIZE/2), width: CELL_SIZE, height: CELL_SIZE, radius: 20};
@@ -123,7 +123,7 @@ function restartGame() {
 
 function drawSeparatorLines() {
    // title line.
-  pg.line(0, TITLE_HEIGHT, width, TITLE_HEIGHT);
+  //pg.line(0, TITLE_HEIGHT, width, TITLE_HEIGHT);
 
   // line between soup and WORDS.
   pg.line(SOUP_AREA.x + (SOUP_MARGIN*2), TITLE_HEIGHT, SOUP_AREA.x + (SOUP_MARGIN*2), height);
