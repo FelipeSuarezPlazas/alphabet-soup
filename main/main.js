@@ -7,22 +7,20 @@ new p5();
 // -------------------------------------------------------------- VARS.
 
 
-let TITLE_HEIGHT = 70;
-
 let CELL_SIZE = 25;
 let CELL_SIZE_DIAGONAL = createVector(CELL_SIZE, CELL_SIZE).mag();
 
 let SOUP_MARGIN = 20;
 let SOUP_LETTERS_AMOUNT = createVector(20, 20);
 let SOUP_AREA = createVector(SOUP_LETTERS_AMOUNT.x * CELL_SIZE, SOUP_LETTERS_AMOUNT.y * CELL_SIZE);
-let SOUP_START_POINT = createVector(SOUP_MARGIN, TITLE_HEIGHT + SOUP_MARGIN);
+let SOUP_START_POINT = createVector(SOUP_MARGIN, SOUP_MARGIN);
 let SOUP_START_POINT_CENTER = createVector(SOUP_START_POINT.x + (CELL_SIZE/2), SOUP_START_POINT.y + (CELL_SIZE/2));
 
 let SIDEBAR_SIZE = createVector(150, SOUP_AREA.y); // falta el margin.
 
 let CANVAS_SIZE = createVector(
   SOUP_AREA.x + (SOUP_MARGIN*2) + SIDEBAR_SIZE.x,
-  SOUP_AREA.y + (SOUP_MARGIN*2) + TITLE_HEIGHT);
+  SOUP_AREA.y + (SOUP_MARGIN*2));
 
 
 let ROTATIONS = [90, 135, 180, 225, 270, 315, 360, 405, 450];
@@ -42,7 +40,7 @@ let ROTATION_TO_SOUP_DIRECTION = {
 
 let ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
 let WORDS = ['nombre', 'esquina', 'teclado', 'color', 'estafa',
-  'cigarrillo', 'limon', 'camara', 'libro', 'esfero'];
+  'cigarrillo', 'abrigo', 'camara', 'libro', 'esfero'];
 
 
 let RECTANGLE = {x: -(CELL_SIZE/2), y: -(CELL_SIZE/2), width: CELL_SIZE, height: CELL_SIZE, radius: 20};
@@ -54,6 +52,11 @@ let UNDERLINE = {x1: 0, y1: 0, x2: SIDEBAR_SIZE.x*.6, y2: 0};
 let UNDERLINE_COLOR = color('black');
 let UNDERLINE_STROKE_COLOR = color(0,0,0,50)
 let UNDERLNE_STROKE_WEIGHT = 4;
+
+let BUTTON_SIZE = createVector(SIDEBAR_SIZE.x-(SOUP_MARGIN), 25);
+let BUTTON_POS = createVector(
+  CANVAS_SIZE.x - SOUP_MARGIN - BUTTON_SIZE.x,
+  CANVAS_SIZE.y - SOUP_MARGIN - BUTTON_SIZE.y);
 
 let last_click = createVector(0, 0);
 let last_height = 0;
@@ -78,13 +81,6 @@ function setup() {
   angleMode(DEGREES);
   frameRate(30);
   restartGame();
-
-  button = createButton('RESTART GAME');
-  button.position(100, 100);
-  button.mousePressed(restartGame);
-
-  
-
 }
 
 function restartGame() {
@@ -113,20 +109,35 @@ function restartGame() {
   underlines.stroke(RECT_STROKE_COLOR);
   underlines.strokeWeight(UNDERLNE_STROKE_WEIGHT);
 
+  drawButton();
   drawSeparatorLines();
-  drawTitle();
   drawSidebar();
   drawAlphabetSoup();
   //basicAlphabetSoupColumnAlgorithm();
   alphabetSoupRandomAlgorithm();
 }
 
-function drawSeparatorLines() {
-   // title line.
-  //pg.line(0, TITLE_HEIGHT, width, TITLE_HEIGHT);
+function drawButton() {
+  pg.push();
+  pg.fill('white');
+  pg.stroke('black');
+  pg.rect(BUTTON_POS.x, BUTTON_POS.y, BUTTON_SIZE.x, BUTTON_SIZE.y);
 
+  pg.fill('black');
+  pg.noStroke();
+  pg.textAlign(CENTER, CENTER);
+  pg.textSize(11);
+  pg.text('RESTART', BUTTON_POS.x+(BUTTON_SIZE.x/2), BUTTON_POS.y+(BUTTON_SIZE.y/2));
+  pg.pop();
+}
+
+function drawSeparatorLines() {
   // line between soup and WORDS.
-  pg.line(SOUP_AREA.x + (SOUP_MARGIN*2), TITLE_HEIGHT, SOUP_AREA.x + (SOUP_MARGIN*2), height);
+  let LM = 2;
+  pg.line(LM, LM, CANVAS_SIZE.x, LM);
+  pg.line(LM, LM, LM, CANVAS_SIZE.y);
+  pg.line(CANVAS_SIZE.x-LM, LM, CANVAS_SIZE.x-LM, CANVAS_SIZE.y-LM);
+  pg.line(LM, CANVAS_SIZE.y-LM, CANVAS_SIZE.x-LM, CANVAS_SIZE.y-LM);
 
   // ----- draw soup columns.
   for (let i = 0; i <= SOUP_LETTERS_AMOUNT.x; i++) {
@@ -147,35 +158,27 @@ function drawSeparatorLines() {
   }
 }
 
-function drawTitle() {
-  pg.textSize(25);
-  pg.textAlign(CENTER, CENTER);
-  pg.text('FIND ALL THE WORDS IN THE ALPHABET SOUP', (SOUP_AREA.x + SIDEBAR_SIZE.x)/2, TITLE_HEIGHT/2 + 5);
-}
-
 function drawSidebar() {
   pg.textAlign(LEFT, CENTER);
-  pg.textSize(15);
+  pg.textSize(12);
 
-  let SIDEBAR_PADDING = createVector(20, 30);
+  let SIDEBAR_PADDING = createVector(10, 10);
 
-  let pos = createVector(
-    SOUP_AREA.x + (SOUP_MARGIN*2) + SIDEBAR_PADDING.x,
-    TITLE_HEIGHT + SIDEBAR_PADDING.y);
+  let word_pos = createVector(
+    SOUP_AREA.x + (SOUP_MARGIN*2) + SIDEBAR_PADDING.x, SOUP_MARGIN + SIDEBAR_PADDING.y);
 
-  let WORDS_MARGIN = 40;
+  let WORDS_MARGIN = createVector(0, 34);
 
-  for (word of WORDS) {
-    pg.text('· ' + word, pos.x, pos.y);
-
-    sidebar_word_positions[word.toUpperCase()] = pos.copy();
-
-    pos.y += WORDS_MARGIN;
+  for (WORD of WORDS) {
+    pg.text('· ' + WORD.toUpperCase(), word_pos.x, word_pos.y);
+    sidebar_word_positions[WORD.toUpperCase()] = word_pos.copy();
+    word_pos.add(WORDS_MARGIN);
   }
 }
 
 function drawAlphabetSoup() {
   pg.textAlign(CENTER, CENTER);
+  pg.textSize(15);
 
   let ROW_LIMIT = SOUP_START_POINT.x + SOUP_AREA.x;
   let COLUMN_LIMIT = SOUP_START_POINT.y + SOUP_AREA.y;
@@ -309,6 +312,7 @@ function alphabetSoupRandomAlgorithm() {
 
   // once this lists are completed, we are ready to draw the letters.
   // DRAW LETTERS
+  pg.textSize(15);
 
   completed_words.forEach(WORD => {
     console.log(WORD, 'word');
@@ -326,116 +330,13 @@ function alphabetSoupRandomAlgorithm() {
         SOUP_START_POINT.y + LETTER_POS.y,
         CELL_SIZE);
 
+      //pg.noStroke();
       pg.fill('black');
       pg.text(LETTER, 
         SOUP_START_POINT_CENTER.x + LETTER_POS.x,
         SOUP_START_POINT_CENTER.y + LETTER_POS.y);
     })
   })
-}
-
-function alphabetSoupRandomAlgorithmOld() {
-  for (word of WORDS) {
-    let WORD = word.toUpperCase();
-
-    //console.log('1');
-
-    let random_cell_ids = [];
-    let RANDOM_CELL_ID = createVector(0, 0);
-
-    let repeat;
-    do {
-      //console.log('2');
-      do {
-        //console.log('3');
-        repeat = false;
-
-        RANDOM_CELL_ID.x = Math.floor(random(SOUP_LETTERS_AMOUNT.x));
-        RANDOM_CELL_ID.y = Math.floor(random(SOUP_LETTERS_AMOUNT.y));
-
-        random_cell_ids.forEach(cell_id => {
-          if (RANDOM_CELL_ID.equals(cell_id)) {
-            repeat = true;
-          }
-        })
-      } while (repeat)
-      //console.log('4');
-      repeat = false;
-
-      console.log(WORD, 'WORD');
-      console.log(RANDOM_CELL_ID, 'RANDOM_CELL_ID');
-
-      let RANDOM_ROTATION = random(ROTATIONS);
-      let RANDOM_SOUP_DIRECTION = ROTATION_TO_SOUP_DIRECTION[RANDOM_ROTATION];
-
-      let CELL_IDS_MAGNITUDE = p5.Vector.mult(RANDOM_SOUP_DIRECTION, word.length);
-      let END_CELL_ID = p5.Vector.add(CELL_IDS_MAGNITUDE, RANDOM_CELL_ID);
-
-      console.log('5');
-      console.log(END_CELL_ID, 'END_CELL_ID');
-
-      if (END_CELL_ID.x < 0 || END_CELL_ID.x > SOUP_LETTERS_AMOUNT.x-1 ||
-          END_CELL_ID.y < 0 || END_CELL_ID.y > SOUP_LETTERS_AMOUNT.y-1) {
-        console.log('6');
-        repeat = true;
-      } else {
-        //console.log('7');
-        random_cell_ids.push(RANDOM_CELL_ID);
-
-        // necesito una posicion que cambie, algo asi como una posicion ancual
-
-        // si es diagonal o no, de eso depende mucho
-        //let IS_DIAGONAL = DIAGONAL_ROTATIONS.includes(RANDOM_ROTATION);
-        //let CELL_UNIT = IS_DIAGONAL ? CELL_SIZE_DIAGONAL : CELL_SIZE;
-
-        let START_CELL_ID = RANDOM_CELL_ID.copy();
-        let actual_cell_id = RANDOM_CELL_ID.copy();
-        actual_cell_id.sub(RANDOM_SOUP_DIRECTION);
-        //p5.Vector.mult(RANDOM_SOUP_DIRECTION * CELL_SIZE);
-        //p5.Vector.add(actual_cell_id * CELL_UNIT);
-        console.log('8');
-        console.log(START_CELL_ID, CELL_SIZE);
-        let actual_cell_id_pos = p5.Vector.mult(START_CELL_ID, CELL_SIZE); // ** ERROR ** v.copy is not a function.
-
-        console.log(WORD);
-
-        for (letter of WORD) {
-          //console.log('9');
-          pg.fill('white');
-          pg.stroke('red');
-          pg.square(
-            SOUP_START_POINT.x + actual_cell_id_pos.x,
-            SOUP_START_POINT.y + actual_cell_id_pos.y,
-            CELL_SIZE);
-
-          pg.fill('black');
-          pg.text(letter, 
-            SOUP_START_POINT_CENTER.x + actual_cell_id_pos.x,
-            SOUP_START_POINT_CENTER.y + actual_cell_id_pos.y);
-
-          //console.log('10');
-
-          actual_cell_id_pos.add(p5.Vector.mult(RANDOM_SOUP_DIRECTION, CELL_SIZE));
-          actual_cell_id.add(RANDOM_SOUP_DIRECTION);
-        }
-
-        //console.log('11');
-
-        let CELL_ONE = createVector(START_CELL_ID.x, START_CELL_ID.y);
-        let CELL_TWO = createVector(actual_cell_id.x, actual_cell_id.y);
-
-        let [cell_id1, cell_id2] = cellIDsToString(CELL_ONE, CELL_TWO)
-
-        //console.log('12');
-
-        string_words_cell_ids[cell_id1] = WORD;
-        string_words_cell_ids[cell_id2] = WORD;
-      }
-
-      console.log('13');
-    } while (repeat)
-    console.log('14');
-  }
 }
 
 function drawWordSelection() {
@@ -504,8 +405,6 @@ function isOnSoupArea(v) {
   }
 }
 
-// aqui debo pasar ambos? bueno... si, tecnicamente si. ambos debo pasarlos.
-
 function cellIDsToString(cell_id1, cell_id2) {
   let str = '';
   str += `${cell_id1.x}.${cell_id1.y}.${cell_id2.x}.${cell_id2.y}`
@@ -528,6 +427,7 @@ function vectorToCellID(vec) {
   return CELL_ID;
 }
 
+let button_pressed = false;
 function mousePressed() {
   console.log('PRESSED');
   fill(RECT_COLOR);
@@ -544,43 +444,55 @@ function mousePressed() {
     //console.log(MOUSE_TO_CELL_ID, 'look at this');
     mouse_cells.push(MOUSE_TO_CELL_ID);
   }
+
+  if (mouseX >= BUTTON_POS.x && mouseX < (BUTTON_POS.x + BUTTON_SIZE.x) && 
+    mouseY >= BUTTON_POS.y && mouseY < (BUTTON_POS.y + BUTTON_SIZE.y)) {
+    button_pressed = true;
+  }
 }
 
 function mouseReleased() {
   console.log('RELEASED');
   pressed_soup_area = false;
+  if (button_pressed) {
+    if (mouseX >= BUTTON_POS.x && mouseX < (BUTTON_POS.x + BUTTON_SIZE.x) && 
+      mouseY >= BUTTON_POS.y && mouseY < (BUTTON_POS.y + BUTTON_SIZE.y)) {
+      button_pressed = false;
+      restartGame();
+    }
+  } else {
+    let LAST_SELECTED_CELL_ID = vectorToCellID(last_selected_cell_pos);
+    mouse_cells.push(LAST_SELECTED_CELL_ID);
 
-  let LAST_SELECTED_CELL_ID = vectorToCellID(last_selected_cell_pos);
-  mouse_cells.push(LAST_SELECTED_CELL_ID);
+    //console.log(mouse_cells[0], mouse_cells[1], 'NOW LOOK AT THISS');
+    console.log('one');
+    let [MOUSE_CELL_ID_STRING, ignore] = cellIDsToString(mouse_cells[0], mouse_cells[1]);
 
-  //console.log(mouse_cells[0], mouse_cells[1], 'NOW LOOK AT THISS');
-  console.log('one');
-  let [MOUSE_CELL_ID_STRING, ignore] = cellIDsToString(mouse_cells[0], mouse_cells[1]);
+    console.log(MOUSE_CELL_ID_STRING)
 
-  if (string_words_cell_ids[MOUSE_CELL_ID_STRING]) {
-    selections.push()
-    selections.translate(last_click);
-    selections.rotate(last_rotation);
-    selections.rect(RECTANGLE.x, RECTANGLE.y, RECTANGLE.width, last_height, RECTANGLE.radius);
-    selections.pop();
-
-
-    let word = string_words_cell_ids[MOUSE_CELL_ID_STRING];
+    if (string_words_cell_ids[MOUSE_CELL_ID_STRING]) {
+      selections.push()
+      selections.translate(last_click);
+      selections.rotate(last_rotation);
+      selections.rect(RECTANGLE.x, RECTANGLE.y, RECTANGLE.width, last_height, RECTANGLE.radius);
+      selections.pop();
 
 
-    let UNDERLINE_POS =  sidebar_word_positions[word];
-    underlines.push()
-    underlines.translate(UNDERLINE_POS);
-    underlines.line(UNDERLINE.x1, UNDERLINE.y1, UNDERLINE.x2, UNDERLINE.y2);
-    underlines.pop();
+      let word = string_words_cell_ids[MOUSE_CELL_ID_STRING];
 
-    string_words_cell_ids[MOUSE_CELL_ID_STRING] = undefined;
-    string_words_cell_ids[ignore] = undefined;
+
+      let UNDERLINE_POS =  sidebar_word_positions[word];
+      underlines.push()
+      underlines.translate(UNDERLINE_POS);
+      underlines.line(UNDERLINE.x1, UNDERLINE.y1, UNDERLINE.x2, UNDERLINE.y2);
+      underlines.pop();
+
+      string_words_cell_ids[MOUSE_CELL_ID_STRING] = undefined;
+      string_words_cell_ids[ignore] = undefined;
+    }
+
+    mouse_cells = [];
   }
-
-  mouse_cells = [];
-
-  console.log('two');
 }
 
 
