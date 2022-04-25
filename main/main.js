@@ -41,8 +41,8 @@ let ROTATION_TO_SOUP_DIRECTION = {
 }
 
 let ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
-let WORDS = ['Carro','Casa','Elefante','Sol','Cubo',
-    'Celular','Vaso','Almohada','Programar','Texto',];
+let WORDS = ['nombre', 'esquina', 'teclado', 'color', 'estafa',
+  'cigarrillos', 'mouse', 'camara', 'libro', 'esfero'];
 
 
 let RECTANGLE = {x: -(CELL_SIZE/2), y: -(CELL_SIZE/2), width: CELL_SIZE, height: CELL_SIZE, radius: 20};
@@ -66,19 +66,6 @@ let pressed_soup_area = false;
 let mouse_cells = [];
 let string_words_cell_ids = {};
 let sidebar_word_positions = {};
-
-
-// una vez el jugador completa todas las palabras, el juego debe reiniciarce
-// o al menos debe haber un boton que reinicie todo.
-
-
-// perfecto, solo falta el algoritmo aleatoreo y la sopa de letras
-// estaria terminada.
-
-// ok, entonces. Cómo voy a hacerlo.
-// debo ubicar las palabras, sin que se cruzen unas con otras, que cada una tenga su propio espacio
-
-
 
 
 // -------------------------------------------------------------- FUNCTIONS.
@@ -130,8 +117,8 @@ function restartGame() {
   drawTitle();
   drawSidebar();
   drawAlphabetSoup();
-  basicAlphabetSoupColumnAlgorithm();
-  //alphabetSoupRandomAlgorithm();
+  //basicAlphabetSoupColumnAlgorithm();
+  alphabetSoupRandomAlgorithm();
 }
 
 function drawSeparatorLines() {
@@ -253,6 +240,101 @@ function basicAlphabetSoupColumnAlgorithm() {
 }
 
 function alphabetSoupRandomAlgorithm() {
+  let marked_cell_ids = [];
+  let completed_words = [];
+  let cell_ids_per_word = {};
+
+  let CHANGE_DIRECTION_TRIES = 5;
+  let FIT_WORD_TRIES = 10;
+
+  WORDS.forEach(word => {
+    let WORD = word.toUpperCase();
+    
+    for (let change_try = 0; change_try < CHANGE_DIRECTION_TRIES; change_try++) {
+      let word_direction = ROTATION_TO_SOUP_DIRECTION[random(ROTATIONS)]
+
+      for (let fit_try = 0; fit_try < FIT_WORD_TRIES; fit_try++) {
+        let word_cell_ids = [];
+        let START_CELL_ID = createVector(
+          Math.floor(random(SOUP_LETTERS_AMOUNT.x)), Math.floor(random(SOUP_LETTERS_AMOUNT.y)));
+        console.log(START_CELL_ID.x, START_CELL_ID.y, 'START_CELL_ID');
+        let actual_cell_id = p5.Vector.sub(START_CELL_ID, word_direction);
+        let overflow = false;
+
+        for (LETTER of WORD) {
+          if (overflow) continue;
+          actual_cell_id.add(word_direction);
+          word_cell_ids.push(actual_cell_id.copy());
+          console.log(WORD, 'WORD');
+          //console.log(actual_cell_id.x, actual_cell_id.y, 'actual cell_id');
+
+          // This cell id is overfloating an already marked cell id.
+          // ********* this can be reduced.
+          if (actual_cell_id.x >= SOUP_LETTERS_AMOUNT.x || actual_cell_id.y >= SOUP_LETTERS_AMOUNT.y ||
+            actual_cell_id.x < 0 || actual_cell_id.y < 0) {
+            overflow = true;
+          } else {
+            marked_cell_ids.forEach(marked_cell => {
+              if (actual_cell_id.equals(marked_cell)) {
+                overflow = true;
+              }
+            })
+          }
+        }
+
+        if (!overflow) { // success
+          marked_cell_ids = marked_cell_ids.concat(word_cell_ids);
+          console.log(marked_cell_ids, 'MARKEEDDDDDD');
+          completed_words.push(WORD);
+          cell_ids_per_word[WORD] = word_cell_ids;
+          console.log(word_cell_ids, 'word_cell_ids');
+
+          change_try = CHANGE_DIRECTION_TRIES;
+          fit_try = FIT_WORD_TRIES;
+
+
+          let CELL_ONE = START_CELL_ID.copy();
+          let CELL_TWO = actual_cell_id.copy();
+
+          let [cell_id1, cell_id2] = cellIDsToString(CELL_ONE, CELL_TWO)
+
+          //console.log('12');
+
+          string_words_cell_ids[cell_id1] = WORD;
+          string_words_cell_ids[cell_id2] = WORD;
+        }
+      }
+    } 
+  })
+
+  // once this lists are completed, we are ready to draw the letters.
+  // DRAW LETTERS
+
+  completed_words.forEach(WORD => {
+    console.log(WORD, 'word');
+    cell_ids_per_word[WORD].forEach((CELL_ID, CELL_IN) => {
+      let LETTER = WORD[CELL_IN];
+      console.log(LETTER, 'letter');
+      console.log(CELL_ID.x, CELL_ID.y, 'cell_id');
+
+      let LETTER_POS = p5.Vector.mult(CELL_ID, CELL_SIZE);
+
+      pg.fill('white');
+      pg.stroke('red');
+      pg.square(
+        SOUP_START_POINT.x + LETTER_POS.x,
+        SOUP_START_POINT.y + LETTER_POS.y,
+        CELL_SIZE);
+
+      pg.fill('black');
+      pg.text(LETTER, 
+        SOUP_START_POINT_CENTER.x + LETTER_POS.x,
+        SOUP_START_POINT_CENTER.y + LETTER_POS.y);
+    })
+  })
+}
+
+function alphabetSoupRandomAlgorithmOld() {
   for (word of WORDS) {
     let WORD = word.toUpperCase();
 
