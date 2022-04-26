@@ -17,6 +17,9 @@ let SOUP_START_POINT = createVector(SOUP_MARGIN, SOUP_MARGIN);
 let SOUP_START_POINT_CENTER = createVector(SOUP_START_POINT.x + (CELL_SIZE/2), SOUP_START_POINT.y + (CELL_SIZE/2));
 
 let SIDEBAR_SIZE = createVector(150, SOUP_AREA.y); // falta el margin.
+let SIDEBAR_PADDING = createVector(10, 10);
+let SIDEBAR_START_POINT = createVector(SOUP_AREA.x + (SOUP_MARGIN*2) + SIDEBAR_PADDING.x, 
+  SOUP_MARGIN + SIDEBAR_PADDING.y);
 
 let CANVAS_SIZE = createVector(
   SOUP_AREA.x + (SOUP_MARGIN*2) + SIDEBAR_SIZE.x,
@@ -72,6 +75,7 @@ let string_words_cell_ids = {};
 let sidebar_word_positions = {};
 let completed_words = [];
 let COMPLETED_WORDS_LIMIT = 14;
+let restart_button_pressed = false;
 
 
 // -------------------------------------------------------------- FUNCTIONS.
@@ -91,17 +95,17 @@ function restartGame() {
   string_words_cell_ids = {};
   sidebar_word_positions = {};
 
-  pg = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
+  ui = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
   selections = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
   underlines = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
 
 
-  pg.clear();
+  ui.clear();
   selections.clear();
   underlines.clear();
 
-  pg.background('white');
-  pg.fill('black');
+  ui.background('white');
+  ui.fill('black');
 
   selections.angleMode(DEGREES);
   selections.fill(RECT_COLOR_COMPLETED);
@@ -112,39 +116,38 @@ function restartGame() {
   underlines.stroke(RECT_STROKE_COLOR);
   underlines.strokeWeight(UNDERLNE_STROKE_WEIGHT);
 
-  drawButton();
-  drawSeparatorLines();
-  drawAlphabetSoup();
-  //basicAlphabetSoupColumnAlgorithm();
-  alphabetSoupRandomAlgorithm();
+  drawRestartBtn();
+  drawLines();
+  drawSoup();
+  algorithm();
   drawSidebar();
 }
 
-function drawButton() {
-  pg.push();
-  pg.fill('white');
-  pg.stroke('black');
-  pg.rect(BUTTON_POS.x, BUTTON_POS.y, BUTTON_SIZE.x, BUTTON_SIZE.y);
+function drawRestartBtn() {
+  ui.push();
+  ui.fill('white');
+  ui.stroke('black');
+  ui.rect(BUTTON_POS.x, BUTTON_POS.y, BUTTON_SIZE.x, BUTTON_SIZE.y);
 
-  pg.fill('black');
-  pg.noStroke();
-  pg.textAlign(CENTER, CENTER);
-  pg.textSize(11);
-  pg.text('RESTART', BUTTON_POS.x+(BUTTON_SIZE.x/2), BUTTON_POS.y+(BUTTON_SIZE.y/2));
-  pg.pop();
+  ui.fill('black');
+  ui.noStroke();
+  ui.textAlign(CENTER, CENTER);
+  ui.textSize(11);
+  ui.text('RESTART', BUTTON_POS.x+(BUTTON_SIZE.x/2), BUTTON_POS.y+(BUTTON_SIZE.y/2));
+  ui.pop();
 }
 
-function drawSeparatorLines() {
+function drawLines() {
   // line between soup and WORDS.
   let LM = 2;
-  pg.line(LM, LM, CANVAS_SIZE.x, LM);
-  pg.line(LM, LM, LM, CANVAS_SIZE.y);
-  pg.line(CANVAS_SIZE.x-LM, LM, CANVAS_SIZE.x-LM, CANVAS_SIZE.y-LM);
-  pg.line(LM, CANVAS_SIZE.y-LM, CANVAS_SIZE.x-LM, CANVAS_SIZE.y-LM);
+  ui.line(LM, LM, CANVAS_SIZE.x, LM);
+  ui.line(LM, LM, LM, CANVAS_SIZE.y);
+  ui.line(CANVAS_SIZE.x-LM, LM, CANVAS_SIZE.x-LM, CANVAS_SIZE.y-LM);
+  ui.line(LM, CANVAS_SIZE.y-LM, CANVAS_SIZE.x-LM, CANVAS_SIZE.y-LM);
 
   // ----- draw soup columns.
   for (let i = 0; i <= SOUP_LETTERS_AMOUNT.x; i++) {
-    pg.line(
+    ui.line(
       SOUP_START_POINT.x + (CELL_SIZE * i),
       SOUP_START_POINT.y, 
       SOUP_START_POINT.x + (CELL_SIZE * i), 
@@ -153,7 +156,7 @@ function drawSeparatorLines() {
 
   // ----- draw soup rows.
   for (let i = 0; i <= SOUP_LETTERS_AMOUNT.y; i++) {
-    pg.line(
+    ui.line(
       SOUP_START_POINT.x,
       SOUP_START_POINT.y + (CELL_SIZE * i), 
       SOUP_START_POINT.x + SOUP_AREA.x, 
@@ -162,26 +165,21 @@ function drawSeparatorLines() {
 }
 
 function drawSidebar() {
-  pg.textAlign(LEFT, CENTER);
-  pg.textSize(12);
+  ui.textAlign(LEFT, CENTER);
+  ui.textSize(12);
 
-  let SIDEBAR_PADDING = createVector(10, 10);
+  let pos = SIDEBAR_START_POINT.copy();
 
-  let word_pos = createVector(
-    SOUP_AREA.x + (SOUP_MARGIN*2) + SIDEBAR_PADDING.x, SOUP_MARGIN + SIDEBAR_PADDING.y);
-
-  let WORDS_MARGIN = createVector(0, 34);
-
-  for (WORD of completed_words) {
-    pg.text('· ' + WORD.toUpperCase(), word_pos.x, word_pos.y);
-    sidebar_word_positions[WORD.toUpperCase()] = word_pos.copy();
-    word_pos.add(WORDS_MARGIN);
-  }
+  completed_words.forEach(WORD => {
+    ui.text('· ' + WORD.toUpperCase(), pos.x, pos.y);
+    sidebar_word_positions[WORD.toUpperCase()] = pos.copy();
+    pos.add(0, 34);
+  })
 }
 
-function drawAlphabetSoup() {
-  pg.textAlign(CENTER, CENTER);
-  pg.textSize(15);
+function drawSoup() {
+  ui.textAlign(CENTER, CENTER);
+  ui.textSize(15);
 
   let ROW_LIMIT = SOUP_START_POINT.x + SOUP_AREA.x;
   let COLUMN_LIMIT = SOUP_START_POINT.y + SOUP_AREA.y;
@@ -192,12 +190,12 @@ function drawAlphabetSoup() {
       let letter_index = random(ALPHABET.length);
       let random_letter = ALPHABET[Math.floor(letter_index)].toUpperCase();
 
-      pg.text(random_letter, x, y);
+      ui.text(random_letter, x, y);
     }
   }
 }
 
-function alphabetSoupRandomAlgorithm() {
+function algorithm() {
   let marked_cell_ids = [];
   let cell_ids_per_word = {};
   completed_words = [];
@@ -271,7 +269,7 @@ function alphabetSoupRandomAlgorithm() {
 
   // once this lists are completed, we are ready to draw the letters.
   // DRAW LETTERS
-  pg.textSize(15);
+  ui.textSize(15);
 
   completed_words.forEach(WORD => {
     console.log(WORD, 'word');
@@ -282,16 +280,16 @@ function alphabetSoupRandomAlgorithm() {
 
       let LETTER_POS = p5.Vector.mult(CELL_ID, CELL_SIZE);
 
-      pg.fill('white');
-      pg.stroke('red');
-      pg.square(
+      ui.fill('white');
+      ui.stroke('red');
+      ui.square(
         SOUP_START_POINT.x + LETTER_POS.x,
         SOUP_START_POINT.y + LETTER_POS.y,
         CELL_SIZE);
 
-      //pg.noStroke();
-      pg.fill('black');
-      pg.text(LETTER, 
+      //ui.noStroke();
+      ui.fill('black');
+      ui.text(LETTER, 
         SOUP_START_POINT_CENTER.x + LETTER_POS.x,
         SOUP_START_POINT_CENTER.y + LETTER_POS.y);
     })
@@ -342,7 +340,7 @@ function drawWordSelection() {
 }
 
 function draw() {
-  image(pg, 0, 0);
+  image(ui, 0, 0);
   image(selections, 0, 0);
   image(underlines, 0, 0);
 
@@ -364,16 +362,6 @@ function isOnSoupArea(v) {
   }
 }
 
-function cellIDsToString(cell_id1, cell_id2) {
-  let str = '';
-  str += `${cell_id1.x}.${cell_id1.y}.${cell_id2.x}.${cell_id2.y}`
-
-  let str2 = '';
-  str2 += `${cell_id2.x}.${cell_id2.y}.${cell_id1.x}.${cell_id1.y}`
-
-  return [str, str2];
-}
-
 function vectorToCellID(vec) {
   // round vector position to nearest cell_size multiple.
   let POS_IN_SOUP_AREA = p5.Vector.sub(vec, SOUP_START_POINT_CENTER);
@@ -386,7 +374,16 @@ function vectorToCellID(vec) {
   return CELL_ID;
 }
 
-let button_pressed = false;
+function cellIDsToString(cell_id1, cell_id2) {
+  let str = '';
+  str += `${cell_id1.x}.${cell_id1.y}.${cell_id2.x}.${cell_id2.y}`
+
+  let str2 = '';
+  str2 += `${cell_id2.x}.${cell_id2.y}.${cell_id1.x}.${cell_id1.y}`
+
+  return [str, str2];
+}
+
 function mousePressed() {
   console.log('PRESSED');
   fill(RECT_COLOR);
@@ -406,17 +403,17 @@ function mousePressed() {
 
   if (mouseX >= BUTTON_POS.x && mouseX < (BUTTON_POS.x + BUTTON_SIZE.x) && 
     mouseY >= BUTTON_POS.y && mouseY < (BUTTON_POS.y + BUTTON_SIZE.y)) {
-    button_pressed = true;
+    restart_button_pressed = true;
   }
 }
 
 function mouseReleased() {
   console.log('RELEASED');
   pressed_soup_area = false;
-  if (button_pressed) {
+  if (restart_button_pressed) {
     if (mouseX >= BUTTON_POS.x && mouseX < (BUTTON_POS.x + BUTTON_SIZE.x) && 
       mouseY >= BUTTON_POS.y && mouseY < (BUTTON_POS.y + BUTTON_SIZE.y)) {
-      button_pressed = false;
+      restart_button_pressed = false;
       restartGame();
     }
   } else {
@@ -440,7 +437,7 @@ function mouseReleased() {
       let word = string_words_cell_ids[MOUSE_CELL_ID_STRING];
 
 
-      let UNDERLINE_POS =  sidebar_word_positions[word];
+      let UNDERLINE_POS = sidebar_word_positions[word];
       underlines.push()
       underlines.translate(UNDERLINE_POS);
       underlines.line(UNDERLINE.x1, UNDERLINE.y1, UNDERLINE.x2, UNDERLINE.y2);
@@ -457,20 +454,6 @@ function mouseReleased() {
 
 
 
-
-// cada palabra comienza en una celda y termina en una celda.
-
-// si el mouse comienza en una celda y termina en una celda igual a la de una de las
-// palabras, entonces la seleccion de guarda y se muestra siempre.
-
-// es todo.
-
-// cada palabra tiene dos celdas.
-// cada celda tiene un vector.
-
-// la seleccion inicia y termina en una celda.
-
-// si esas celdas coinciden con las celdas de alguna palabra, la selección se queda por siempre.
 
 
 
