@@ -40,7 +40,8 @@ let ROTATION_TO_SOUP_DIRECTION = {
 
 let ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
 let WORDS = ['nombre', 'esquina', 'teclado', 'color', 'estafa',
-  'cigarrillo', 'abrigo', 'camara', 'libro', 'esfero'];
+  'cigarrillo', 'abrigo', 'camara', 'libro', 'esfero', 'colt', 
+  'chococrispis', 'mango', 'televisor', 'cama', 'android', 'betty'];
 
 
 let RECTANGLE = {x: -(CELL_SIZE/2), y: -(CELL_SIZE/2), width: CELL_SIZE, height: CELL_SIZE, radius: 20};
@@ -69,6 +70,8 @@ let pressed_soup_area = false;
 let mouse_cells = [];
 let string_words_cell_ids = {};
 let sidebar_word_positions = {};
+let completed_words = [];
+let COMPLETED_WORDS_LIMIT = 14;
 
 
 // -------------------------------------------------------------- FUNCTIONS.
@@ -111,10 +114,10 @@ function restartGame() {
 
   drawButton();
   drawSeparatorLines();
-  drawSidebar();
   drawAlphabetSoup();
   //basicAlphabetSoupColumnAlgorithm();
   alphabetSoupRandomAlgorithm();
+  drawSidebar();
 }
 
 function drawButton() {
@@ -169,7 +172,7 @@ function drawSidebar() {
 
   let WORDS_MARGIN = createVector(0, 34);
 
-  for (WORD of WORDS) {
+  for (WORD of completed_words) {
     pg.text('· ' + WORD.toUpperCase(), word_pos.x, word_pos.y);
     sidebar_word_positions[WORD.toUpperCase()] = word_pos.copy();
     word_pos.add(WORDS_MARGIN);
@@ -194,63 +197,19 @@ function drawAlphabetSoup() {
   }
 }
 
-function basicAlphabetSoupColumnAlgorithm() {
-  // ************************************************** THIS WAS DESIGNED TO BE MORE COLUMNS THAN WORDS ********
-  let random_columns = []
-
-  while (random_columns.length < WORDS.length) {
-    let random_index = Math.floor(random(SOUP_LETTERS_AMOUNT.x));
-    if (!random_columns.includes(random_index)) {
-      random_columns.push(random_index);
-      console.log(random_index, 'random column');
-    }
-  }
-
-  random_columns.forEach( (random_column_index, index) => {
-    let WORD = WORDS[index].toUpperCase();
-    
-    let RANDOM_COLUMN_POS = (random_column_index * CELL_SIZE);
-    let RANDOM_COLUMN_START_CELL = Math.round(random(0, (SOUP_LETTERS_AMOUNT.y - WORD.length) ));
-    let RANDOM_COLUMN_START_CELL_POS = (RANDOM_COLUMN_START_CELL * CELL_SIZE);
-    let final_cell = RANDOM_COLUMN_START_CELL - 1;
-    let cell_pos = RANDOM_COLUMN_START_CELL_POS;
-
-    for (letter of WORD) {
-      pg.fill('white');
-      pg.stroke('red');
-      pg.square(
-        SOUP_START_POINT.x + RANDOM_COLUMN_POS, 
-        SOUP_START_POINT.y + cell_pos,
-        CELL_SIZE);
-
-      pg.fill('black');
-      pg.text(letter, 
-        SOUP_START_POINT_CENTER.x + RANDOM_COLUMN_POS,
-        SOUP_START_POINT_CENTER.y + cell_pos);
-
-      cell_pos += CELL_SIZE;
-      final_cell += 1;
-    }
-
-    let CELL_ONE = createVector(random_column_index, RANDOM_COLUMN_START_CELL);
-    let CELL_TWO = createVector(random_column_index, final_cell);
-
-    let [cell_id1, cell_id2] = cellIDsToString(CELL_ONE, CELL_TWO)
-
-    string_words_cell_ids[cell_id1] = WORD;
-    string_words_cell_ids[cell_id2] = WORD;
-  })
-}
-
 function alphabetSoupRandomAlgorithm() {
   let marked_cell_ids = [];
-  let completed_words = [];
   let cell_ids_per_word = {};
+  completed_words = [];
 
   let CHANGE_DIRECTION_TRIES = 5;
   let FIT_WORD_TRIES = 10;
 
+  let completed_words_counter = 0;
   WORDS.forEach(word => {
+    if (completed_words_counter >= COMPLETED_WORDS_LIMIT) return;
+    completed_words_counter++;
+
     let WORD = word.toUpperCase();
     
     for (let change_try = 0; change_try < CHANGE_DIRECTION_TRIES; change_try++) {
