@@ -7,17 +7,17 @@ new p5();
 // -------------------------------------------------------------- VARS.
 
 
-let CELL_SIZE = 25;
+let CELL_SIZE = 30;
 let CELL_SIZE_DIAGONAL = createVector(CELL_SIZE, CELL_SIZE).mag();
 
 let SOUP_MARGIN = 20;
-let SOUP_LETTERS_AMOUNT = createVector(20, 20);
+let SOUP_LETTERS_AMOUNT = createVector(14, 14);
 let SOUP_AREA = createVector(SOUP_LETTERS_AMOUNT.x * CELL_SIZE, SOUP_LETTERS_AMOUNT.y * CELL_SIZE);
 let SOUP_START_POINT = createVector(SOUP_MARGIN, SOUP_MARGIN);
 let SOUP_START_POINT_CENTER = createVector(SOUP_START_POINT.x + (CELL_SIZE/2), SOUP_START_POINT.y + (CELL_SIZE/2));
 
 let SIDEBAR_SIZE = createVector(150, SOUP_AREA.y); // falta el margin.
-let SIDEBAR_PADDING = createVector(10, 10);
+let SIDEBAR_PADDING = createVector(10, 15);
 let SIDEBAR_START_POINT = createVector(SOUP_AREA.x + (SOUP_MARGIN*2) + SIDEBAR_PADDING.x, 
   SOUP_MARGIN + SIDEBAR_PADDING.y);
 
@@ -42,9 +42,8 @@ let ROTATION_TO_SOUP_DIRECTION = {
 }
 
 let ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
-let WORDS = ['nombre', 'esquina', 'teclado', 'color', 'estafa',
-  'cigarrillo', 'abrigo', 'camara', 'libro', 'esfero', 'colt', 
-  'chococrispis', 'mango', 'televisor', 'cama', 'android', 'betty'];
+let WORDS = ['playground', 'clothes', 'ball', 'learning', 'finland', 'airplane', 'travel',
+              'butterfly', 'language', 'programming', 'puzzle', 'store', 'cloud'];
 
 
 let RECTANGLE = {x: -(CELL_SIZE/2), y: -(CELL_SIZE/2), width: CELL_SIZE, height: CELL_SIZE, radius: 20};
@@ -57,7 +56,7 @@ let UNDERLINE_COLOR = color('black');
 let UNDERLINE_STROKE_COLOR = color(0,0,0,50)
 let UNDERLNE_STROKE_WEIGHT = 4;
 
-let BUTTON_SIZE = createVector(SIDEBAR_SIZE.x-(SOUP_MARGIN), 25);
+let BUTTON_SIZE = createVector(SIDEBAR_SIZE.x-(SOUP_MARGIN), 28);
 let BUTTON_POS = createVector(
   CANVAS_SIZE.x - SOUP_MARGIN - BUTTON_SIZE.x,
   CANVAS_SIZE.y - SOUP_MARGIN - BUTTON_SIZE.y);
@@ -74,8 +73,10 @@ let mouse_cells = [];
 let string_words_cell_ids = {};
 let sidebar_word_positions = {};
 let completed_words = [];
-let COMPLETED_WORDS_LIMIT = 14;
+let COMPLETED_WORDS_LIMIT = 8;
 let restart_button_pressed = false;
+
+const RECT_RADIUS = 10;
 
 
 // -------------------------------------------------------------- FUNCTIONS.
@@ -88,6 +89,14 @@ function setup() {
   angleMode(DEGREES);
   frameRate(30);
   restartGame();
+
+  drawBackgrounds()
+}
+
+function drawBackgrounds() {
+  // esto puede estar directamente en el canvas opirque nunca se tienen que borrar...
+
+  
 }
 
 function restartGame() {
@@ -106,6 +115,7 @@ function restartGame() {
 
   ui.background('white');
   ui.fill('black');
+  ui.textFont('Cursive');
 
   selections.angleMode(DEGREES);
   selections.fill(RECT_COLOR_COMPLETED);
@@ -127,7 +137,7 @@ function drawRestartBtn() {
   ui.push();
   ui.fill('white');
   ui.stroke('black');
-  ui.rect(BUTTON_POS.x, BUTTON_POS.y, BUTTON_SIZE.x, BUTTON_SIZE.y);
+  ui.rect(BUTTON_POS.x, BUTTON_POS.y, BUTTON_SIZE.x, BUTTON_SIZE.y, RECT_RADIUS);
 
   ui.fill('black');
   ui.noStroke();
@@ -138,15 +148,21 @@ function drawRestartBtn() {
 }
 
 function drawLines() {
-  // line between soup and WORDS.
+  // ----- canvas limits
   let LM = 2;
-  ui.line(LM, LM, CANVAS_SIZE.x, LM);
-  ui.line(LM, LM, LM, CANVAS_SIZE.y);
-  ui.line(CANVAS_SIZE.x-LM, LM, CANVAS_SIZE.x-LM, CANVAS_SIZE.y-LM);
-  ui.line(LM, CANVAS_SIZE.y-LM, CANVAS_SIZE.x-LM, CANVAS_SIZE.y-LM);
+  ui.push()
+  ui.noFill();
+  ui.strokeWeight(2);
+  ui.rect(LM, LM, CANVAS_SIZE.x- LM, CANVAS_SIZE.y-LM, RECT_RADIUS);
+
+  // ----- soup limits
+
+  ui.rect(SOUP_START_POINT.x, SOUP_START_POINT.y, SOUP_AREA.x, SOUP_AREA.y, RECT_RADIUS);
+  ui.pop();
+
 
   // ----- draw soup columns.
-  for (let i = 0; i <= SOUP_LETTERS_AMOUNT.x; i++) {
+  for (let i = 1; i <= SOUP_LETTERS_AMOUNT.x-1; i++) {
     ui.line(
       SOUP_START_POINT.x + (CELL_SIZE * i),
       SOUP_START_POINT.y, 
@@ -155,7 +171,7 @@ function drawLines() {
   }
 
   // ----- draw soup rows.
-  for (let i = 0; i <= SOUP_LETTERS_AMOUNT.y; i++) {
+  for (let i = 1; i <= SOUP_LETTERS_AMOUNT.y-1; i++) {
     ui.line(
       SOUP_START_POINT.x,
       SOUP_START_POINT.y + (CELL_SIZE * i), 
