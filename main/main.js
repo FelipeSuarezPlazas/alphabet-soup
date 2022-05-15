@@ -7,23 +7,23 @@ new p5();
 // -------------------------------------------------------------- VARS.
 
 
-let CELL_SIZE = 30;
-let CELL_SIZE_DIAGONAL = createVector(CELL_SIZE, CELL_SIZE).mag();
 
-let SOUP_MARGIN = 20;
-let SOUP_LETTERS_AMOUNT = createVector(14, 14);
-let SOUP_AREA = createVector(SOUP_LETTERS_AMOUNT.x * CELL_SIZE, SOUP_LETTERS_AMOUNT.y * CELL_SIZE);
-let SOUP_START_POINT = createVector(SOUP_MARGIN, SOUP_MARGIN);
-let SOUP_START_POINT_CENTER = createVector(SOUP_START_POINT.x + (CELL_SIZE/2), SOUP_START_POINT.y + (CELL_SIZE/2));
 
-let SIDEBAR_SIZE = createVector(150, SOUP_AREA.y); // falta el margin.
-let SIDEBAR_PADDING = createVector(10, 15);
-let SIDEBAR_START_POINT = createVector(SOUP_AREA.x + (SOUP_MARGIN*2) + SIDEBAR_PADDING.x, 
-  SOUP_MARGIN + SIDEBAR_PADDING.y);
+/**
 
-let CANVAS_SIZE = createVector(
-  SOUP_AREA.x + (SOUP_MARGIN*2) + SIDEBAR_SIZE.x,
-  SOUP_AREA.y + (SOUP_MARGIN*2));
+Lets start with the soup.
+it has a rectangle, lines, letters, and special letters.
+
+all of that is drawn just one time per game.
+*/
+
+
+
+
+
+
+const GAME_MARGIN = 30;
+const RECT_RADIUS = 10;
 
 
 let ROTATIONS = [90, 135, 180, 225, 270, 315, 360, 405, 450];
@@ -46,6 +46,248 @@ let WORDS = ['playground', 'clothes', 'ball', 'learning', 'finland', 'airplane',
               'butterfly', 'language', 'programming', 'puzzle', 'store', 'cloud'];
 
 
+// ---------------------------------------------------- SOUP
+
+
+const CELL_SIZE = 30;
+const CELL_SIZE_DIAGONAL = createVector(CELL_SIZE, CELL_SIZE).mag();
+
+const SOUP_MARGIN = 30;
+const SOUP_LETTERS_AMOUNT = createVector(14, 14);
+const SOUP_AREA = createVector(SOUP_LETTERS_AMOUNT.x * CELL_SIZE, SOUP_LETTERS_AMOUNT.y * CELL_SIZE);
+const SOUP_START_POINT = createVector(GAME_MARGIN + SOUP_MARGIN, GAME_MARGIN + SOUP_MARGIN);
+const SOUP_START_POINT_CENTER = createVector(SOUP_START_POINT.x + (CELL_SIZE/2), SOUP_START_POINT.y + (CELL_SIZE/2));
+
+let soup = {
+  // as this is drawn just one time, I dont know if this needs a graphics variable.
+  graphics: createGraphics(windowWidth, windowHeight),
+  pos: SOUP_START_POINT.copy(),
+  center_pos: SOUP_START_POINT_CENTER.copy(),
+  size: SOUP_AREA.copy(),
+  completed_words: [],
+  completed_words_counter: 0,
+  completed_words_limit: 8,
+
+  drawContainer: function() {
+    this.graphics.rect(this.pos.x, this.pos.y, this.size.x, this.size.y, RECT_RADIUS);
+  },
+  drawDivisions: function() {
+    // ----- rows.
+    for (let i = 1; i <= SOUP_LETTERS_AMOUNT.y-1; i++) {
+      this.graphics.line(
+        SOUP_START_POINT.x,
+        SOUP_START_POINT.y + (CELL_SIZE * i), 
+        SOUP_START_POINT.x + SOUP_AREA.x, 
+        SOUP_START_POINT.y + (CELL_SIZE * i));
+    }
+
+    // ----- columns.
+    for (let i = 1; i <= SOUP_LETTERS_AMOUNT.x-1; i++) {
+      this.graphics.line(
+        SOUP_START_POINT.x + (CELL_SIZE * i),
+        SOUP_START_POINT.y, 
+        SOUP_START_POINT.x + (CELL_SIZE * i), 
+        SOUP_START_POINT.y + SOUP_AREA.y);
+    }
+  },
+  drawLetters: function() {
+    this.graphics.textAlign(CENTER, CENTER);
+    this.graphics.textSize(15);
+
+    let ROW_LIMIT = SOUP_START_POINT.x + SOUP_AREA.x;
+    let COLUMN_LIMIT = SOUP_START_POINT.y + SOUP_AREA.y;
+
+    for (var x=SOUP_START_POINT_CENTER.x; x < ROW_LIMIT; x += CELL_SIZE) {
+      for (var y=SOUP_START_POINT_CENTER.y; y < COLUMN_LIMIT; y += CELL_SIZE) {
+
+        let letter_index = random(ALPHABET.length);
+        let random_letter = ALPHABET[Math.floor(letter_index)].toUpperCase();
+
+        this.graphics.text(random_letter, x, y);
+      }
+    }
+  },
+  drawWords: function() {
+    let marked_cell_ids = [];
+    let cell_ids_per_word = {};
+
+    let CHANGE_DIRECTION_TRIES = 5;
+    let FIT_WORD_TRIES = 10;
+
+    WORDS.forEach(word => {
+      if (this.completed_words_counter >= this.completed_words_limit) return;
+      this.completed_words_counter++;
+
+      let WORD = word.toUpperCase();
+      
+      for (let change_try = 0; change_try < CHANGE_DIRECTION_TRIES; change_try++) {
+        let word_direction = ROTATION_TO_SOUP_DIRECTION[random(ROTATIONS)]
+
+        for (let fit_try = 0; fit_try < FIT_WORD_TRIES; fit_try++) {
+          let word_cell_ids = [];
+          let START_CELL_ID = createVector(
+            Math.floor(random(SOUP_LETTERS_AMOUNT.x)), Math.floor(random(SOUP_LETTERS_AMOUNT.y)));
+          console.log(START_CELL_ID.x, START_CELL_ID.y, 'START_CELL_ID');
+          let actual_cell_id = p5.Vector.sub(START_CELL_ID, word_direction);
+          let overflow = false;
+
+          for (LETTER of WORD) {
+            if (overflow) continue;
+            actual_cell_id.add(word_direction);
+            word_cell_ids.push(actual_cell_id.copy());
+            console.log(WORD, 'WORD');
+            //console.log(actual_cell_id.x, actual_cell_id.y, 'actual cell_id');
+
+            // This cell id is overfloating an already marked cell id.
+            // ********* this can be reduced.
+            if (actual_cell_id.x >= SOUP_LETTERS_AMOUNT.x || actual_cell_id.y >= SOUP_LETTERS_AMOUNT.y ||
+              actual_cell_id.x < 0 || actual_cell_id.y < 0) {
+              overflow = true;
+            } else {
+              marked_cell_ids.forEach(marked_cell => {
+                if (actual_cell_id.equals(marked_cell)) {
+                  overflow = true;
+                }
+              })
+            }
+          }
+
+          if (!overflow) { // success
+            marked_cell_ids = marked_cell_ids.concat(word_cell_ids);
+            console.log(marked_cell_ids, 'MARKEEDDDDDD');
+            this.completed_words.push(WORD);
+            cell_ids_per_word[WORD] = word_cell_ids;
+            console.log(word_cell_ids, 'word_cell_ids');
+
+            change_try = CHANGE_DIRECTION_TRIES;
+            fit_try = FIT_WORD_TRIES;
+
+
+            let CELL_ONE = START_CELL_ID.copy();
+            let CELL_TWO = actual_cell_id.copy();
+
+            let [cell_id1, cell_id2] = cellIDsToString(CELL_ONE, CELL_TWO)
+
+            //console.log('12');
+
+            string_words_cell_ids[cell_id1] = WORD;
+            string_words_cell_ids[cell_id2] = WORD;
+          }
+        }
+      } 
+    })
+
+    // once this lists are completed, we are ready to draw the letters.
+    // DRAW LETTERS
+    this.graphics.textSize(15);
+
+    this.completed_words.forEach(WORD => {
+      console.log(WORD, 'word');
+      cell_ids_per_word[WORD].forEach((CELL_ID, CELL_IN) => {
+        let LETTER = WORD[CELL_IN];
+        //console.log(LETTER, 'letter');
+        //console.log(CELL_ID.x, CELL_ID.y, 'cell_id');
+
+        let LETTER_POS = p5.Vector.mult(CELL_ID, CELL_SIZE);
+
+        this.graphics.fill('white');
+        this.graphics.stroke('red');
+        this.graphics.square(
+          SOUP_START_POINT.x + LETTER_POS.x,
+          SOUP_START_POINT.y + LETTER_POS.y,
+          CELL_SIZE);
+
+        //this.graphics.noStroke();
+        this.graphics.fill('black');
+        this.graphics.text(LETTER, 
+          SOUP_START_POINT_CENTER.x + LETTER_POS.x,
+          SOUP_START_POINT_CENTER.y + LETTER_POS.y);
+      })
+    })
+  }
+}
+
+
+
+// ---------------------------------------------------- SIEDEBAR
+
+
+let SIDEBAR_SIZE = createVector(150, SOUP_AREA.y); // falta el margin.
+let SIDEBAR_PADDING = createVector(10, 15);
+let SIDEBAR_START_POINT = createVector(
+  SOUP_START_POINT.x + SOUP_AREA.x + SOUP_MARGIN, 
+  SOUP_START_POINT.y);
+
+
+let sidebar = {
+  graphics: createGraphics(windowWidth, windowHeight),
+  size: createVector(150, 400),
+  pos: createVector( 
+    SOUP_START_POINT.x + SOUP_AREA.x + SOUP_MARGIN, 
+    SOUP_START_POINT.y),
+  words_margin: 34,
+  word_positions: {},
+
+  drawContainer: function() {
+    this.graphics.rect(this.pos.x, this.pos.y, this.size.x, this.size.y, RECT_RADIUS);
+  },
+  drawWords: function() {
+    this.graphics.textAlign(LEFT, CENTER);
+    this.graphics.textSize(12);
+
+    let actual_pos = this.pos.copy();
+
+    soup.completed_words.forEach(WORD => {
+      this.graphics.text('· ' + WORD.toUpperCase(), actual_pos.x, actual_pos.y);
+      this.word_positions[WORD.toUpperCase()] = actual_pos.copy();
+      actual_pos.add(0, this.words_margin);
+    })
+  },
+}
+
+
+
+// ---------------------------------------------------- RESTART BUTTON
+
+
+const BUTTON_SIZE = createVector(sidebar.size.x, 28);
+const BUTTON_POS = createVector(
+  CANVAS_SIZE.x - SOUP_MARGIN - BUTTON_SIZE.x,
+  CANVAS_SIZE.y - SOUP_MARGIN - BUTTON_SIZE.y);
+
+let restart_bttn = {
+  graphics: createGraphics(windowWidth, windowHeight),
+  pos: createVector(sidebar.pos.x, soup.pos.y + soup.size.y - BUTTON_SIZE.y),
+  size: BUTTON_SIZE.copy(),
+
+  drawContainer: function() {
+    this.graphics.fill('white');
+    this.graphics.stroke('black');
+    this.graphics.rect(this.pos.x, this.pos.y, this.size.x, this.size.y, RECT_RADIUS);
+  },
+  drawText: function() {
+    this.graphics.fill('black');
+    this.graphics.noStroke();
+    this.graphics.textAlign(CENTER, CENTER);
+    this.graphics.textSize(11);
+    this.graphics.text(
+      'RESTART', 
+      this.pos.x + (this.size.x/2), 
+      this.pos.y + (this.size.y/2));
+  },
+  draw: function() {
+    this.drawContainer();
+    this.drawText();
+  }
+}
+
+
+
+let CANVAS_SIZE = createVector(
+  SOUP_AREA.x + (SOUP_MARGIN*2) + SIDEBAR_SIZE.x,
+  SOUP_AREA.y + (SOUP_MARGIN*2));
+
+
 let RECTANGLE = {x: -(CELL_SIZE/2), y: -(CELL_SIZE/2), width: CELL_SIZE, height: CELL_SIZE, radius: 20};
 let RECT_COLOR = color(0,0,250,50);
 let RECT_COLOR_COMPLETED = color(0,250,0,50);
@@ -56,10 +298,6 @@ let UNDERLINE_COLOR = color('black');
 let UNDERLINE_STROKE_COLOR = color(0,0,0,50)
 let UNDERLNE_STROKE_WEIGHT = 4;
 
-let BUTTON_SIZE = createVector(SIDEBAR_SIZE.x-(SOUP_MARGIN), 28);
-let BUTTON_POS = createVector(
-  CANVAS_SIZE.x - SOUP_MARGIN - BUTTON_SIZE.x,
-  CANVAS_SIZE.y - SOUP_MARGIN - BUTTON_SIZE.y);
 
 let last_click = createVector(0, 0);
 let last_height = 0;
@@ -71,38 +309,33 @@ let pressed_soup_area = false;
 
 let mouse_cells = [];
 let string_words_cell_ids = {};
-let sidebar_word_positions = {};
-let completed_words = [];
-let COMPLETED_WORDS_LIMIT = 8;
 let restart_button_pressed = false;
-
-const RECT_RADIUS = 10;
 
 
 // -------------------------------------------------------------- FUNCTIONS.
 
 
 function setup() {
-  let CNV = createCanvas(CANVAS_SIZE.x, CANVAS_SIZE.y);
+  let CNV = createCanvas(windowWidth, windowHeight);
   CNV.parent('canva-game');
 
   angleMode(DEGREES);
   frameRate(30);
-  restartGame();
 
   drawBackgrounds()
+  restartGame();
 }
 
 function drawBackgrounds() {
-  // esto puede estar directamente en el canvas opirque nunca se tienen que borrar...
-
-  
+  //fill('black');
+  //stroke('black');
+  strokeWeight(2);
+  rect(0, 0, CANVAS_SIZE.x, CANVAS_SIZE.y, RECT_RADIUS);
 }
 
 function restartGame() {
   mouse_cells = [];
   string_words_cell_ids = {};
-  sidebar_word_positions = {};
 
   ui = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
   selections = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
@@ -113,7 +346,7 @@ function restartGame() {
   selections.clear();
   underlines.clear();
 
-  ui.background('white');
+  //ui.background('white');
   ui.fill('black');
   ui.textFont('Cursive');
 
@@ -131,185 +364,6 @@ function restartGame() {
   drawSoup();
   algorithm();
   drawSidebar();
-}
-
-function drawRestartBtn() {
-  ui.push();
-  ui.fill('white');
-  ui.stroke('black');
-  ui.rect(BUTTON_POS.x, BUTTON_POS.y, BUTTON_SIZE.x, BUTTON_SIZE.y, RECT_RADIUS);
-
-  ui.fill('black');
-  ui.noStroke();
-  ui.textAlign(CENTER, CENTER);
-  ui.textSize(11);
-  ui.text('RESTART', BUTTON_POS.x+(BUTTON_SIZE.x/2), BUTTON_POS.y+(BUTTON_SIZE.y/2));
-  ui.pop();
-}
-
-function drawLines() {
-  // ----- canvas limits
-  let LM = 2;
-  ui.push()
-  ui.noFill();
-  ui.strokeWeight(2);
-  ui.rect(LM, LM, CANVAS_SIZE.x- LM, CANVAS_SIZE.y-LM, RECT_RADIUS);
-
-  // ----- soup limits
-
-  ui.rect(SOUP_START_POINT.x, SOUP_START_POINT.y, SOUP_AREA.x, SOUP_AREA.y, RECT_RADIUS);
-  ui.pop();
-
-
-  // ----- draw soup columns.
-  for (let i = 1; i <= SOUP_LETTERS_AMOUNT.x-1; i++) {
-    ui.line(
-      SOUP_START_POINT.x + (CELL_SIZE * i),
-      SOUP_START_POINT.y, 
-      SOUP_START_POINT.x + (CELL_SIZE * i), 
-      SOUP_START_POINT.y + SOUP_AREA.y);
-  }
-
-  // ----- draw soup rows.
-  for (let i = 1; i <= SOUP_LETTERS_AMOUNT.y-1; i++) {
-    ui.line(
-      SOUP_START_POINT.x,
-      SOUP_START_POINT.y + (CELL_SIZE * i), 
-      SOUP_START_POINT.x + SOUP_AREA.x, 
-      SOUP_START_POINT.y + (CELL_SIZE * i));
-  }
-}
-
-function drawSidebar() {
-  ui.textAlign(LEFT, CENTER);
-  ui.textSize(12);
-
-  let pos = SIDEBAR_START_POINT.copy();
-
-  completed_words.forEach(WORD => {
-    ui.text('· ' + WORD.toUpperCase(), pos.x, pos.y);
-    sidebar_word_positions[WORD.toUpperCase()] = pos.copy();
-    pos.add(0, 34);
-  })
-}
-
-function drawSoup() {
-  ui.textAlign(CENTER, CENTER);
-  ui.textSize(15);
-
-  let ROW_LIMIT = SOUP_START_POINT.x + SOUP_AREA.x;
-  let COLUMN_LIMIT = SOUP_START_POINT.y + SOUP_AREA.y;
-
-  for (var x=SOUP_START_POINT_CENTER.x; x < ROW_LIMIT; x += CELL_SIZE) {
-    for (var y=SOUP_START_POINT_CENTER.y; y < COLUMN_LIMIT; y += CELL_SIZE) {
-
-      let letter_index = random(ALPHABET.length);
-      let random_letter = ALPHABET[Math.floor(letter_index)].toUpperCase();
-
-      ui.text(random_letter, x, y);
-    }
-  }
-}
-
-function algorithm() {
-  let marked_cell_ids = [];
-  let cell_ids_per_word = {};
-  completed_words = [];
-
-  let CHANGE_DIRECTION_TRIES = 5;
-  let FIT_WORD_TRIES = 10;
-
-  let completed_words_counter = 0;
-  WORDS.forEach(word => {
-    if (completed_words_counter >= COMPLETED_WORDS_LIMIT) return;
-    completed_words_counter++;
-
-    let WORD = word.toUpperCase();
-    
-    for (let change_try = 0; change_try < CHANGE_DIRECTION_TRIES; change_try++) {
-      let word_direction = ROTATION_TO_SOUP_DIRECTION[random(ROTATIONS)]
-
-      for (let fit_try = 0; fit_try < FIT_WORD_TRIES; fit_try++) {
-        let word_cell_ids = [];
-        let START_CELL_ID = createVector(
-          Math.floor(random(SOUP_LETTERS_AMOUNT.x)), Math.floor(random(SOUP_LETTERS_AMOUNT.y)));
-        console.log(START_CELL_ID.x, START_CELL_ID.y, 'START_CELL_ID');
-        let actual_cell_id = p5.Vector.sub(START_CELL_ID, word_direction);
-        let overflow = false;
-
-        for (LETTER of WORD) {
-          if (overflow) continue;
-          actual_cell_id.add(word_direction);
-          word_cell_ids.push(actual_cell_id.copy());
-          console.log(WORD, 'WORD');
-          //console.log(actual_cell_id.x, actual_cell_id.y, 'actual cell_id');
-
-          // This cell id is overfloating an already marked cell id.
-          // ********* this can be reduced.
-          if (actual_cell_id.x >= SOUP_LETTERS_AMOUNT.x || actual_cell_id.y >= SOUP_LETTERS_AMOUNT.y ||
-            actual_cell_id.x < 0 || actual_cell_id.y < 0) {
-            overflow = true;
-          } else {
-            marked_cell_ids.forEach(marked_cell => {
-              if (actual_cell_id.equals(marked_cell)) {
-                overflow = true;
-              }
-            })
-          }
-        }
-
-        if (!overflow) { // success
-          marked_cell_ids = marked_cell_ids.concat(word_cell_ids);
-          console.log(marked_cell_ids, 'MARKEEDDDDDD');
-          completed_words.push(WORD);
-          cell_ids_per_word[WORD] = word_cell_ids;
-          console.log(word_cell_ids, 'word_cell_ids');
-
-          change_try = CHANGE_DIRECTION_TRIES;
-          fit_try = FIT_WORD_TRIES;
-
-
-          let CELL_ONE = START_CELL_ID.copy();
-          let CELL_TWO = actual_cell_id.copy();
-
-          let [cell_id1, cell_id2] = cellIDsToString(CELL_ONE, CELL_TWO)
-
-          //console.log('12');
-
-          string_words_cell_ids[cell_id1] = WORD;
-          string_words_cell_ids[cell_id2] = WORD;
-        }
-      }
-    } 
-  })
-
-  // once this lists are completed, we are ready to draw the letters.
-  // DRAW LETTERS
-  ui.textSize(15);
-
-  completed_words.forEach(WORD => {
-    console.log(WORD, 'word');
-    cell_ids_per_word[WORD].forEach((CELL_ID, CELL_IN) => {
-      let LETTER = WORD[CELL_IN];
-      console.log(LETTER, 'letter');
-      console.log(CELL_ID.x, CELL_ID.y, 'cell_id');
-
-      let LETTER_POS = p5.Vector.mult(CELL_ID, CELL_SIZE);
-
-      ui.fill('white');
-      ui.stroke('red');
-      ui.square(
-        SOUP_START_POINT.x + LETTER_POS.x,
-        SOUP_START_POINT.y + LETTER_POS.y,
-        CELL_SIZE);
-
-      //ui.noStroke();
-      ui.fill('black');
-      ui.text(LETTER, 
-        SOUP_START_POINT_CENTER.x + LETTER_POS.x,
-        SOUP_START_POINT_CENTER.y + LETTER_POS.y);
-    })
-  })
 }
 
 function drawWordSelection() {
