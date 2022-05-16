@@ -45,6 +45,8 @@ let ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
 let WORDS = ['playground', 'clothes', 'ball', 'learning', 'finland', 'airplane', 'travel',
               'butterfly', 'language', 'programming', 'puzzle', 'store', 'cloud'];
 
+WORDS = WORDS.sort((a, b) => b.length - a.length);
+
 
 // ---------------------------------------------------- SOUP
 
@@ -68,6 +70,10 @@ let soup = {
   completed_words_counter: 0,
   completed_words_limit: 8,
 
+  setup: function() {
+    this.graphics.textSize(15);
+    this.graphics.textFont('Cursive');
+  },
   drawContainer: function() {
     this.graphics.rect(this.pos.x, this.pos.y, this.size.x, this.size.y, RECT_RADIUS);
   },
@@ -179,8 +185,6 @@ let soup = {
 
     // once this lists are completed, we are ready to draw the letters.
     // DRAW LETTERS
-    this.graphics.textSize(15);
-
     this.completed_words.forEach(WORD => {
       console.log(WORD, 'word');
       cell_ids_per_word[WORD].forEach((CELL_ID, CELL_IN) => {
@@ -204,12 +208,23 @@ let soup = {
           SOUP_START_POINT_CENTER.y + LETTER_POS.y);
       })
     })
+  },
+  draw: function() {
+    this.drawContainer();
+    this.drawDivisions();
+    this.drawLetters();
+    this.drawWords();
+
+    image(this.graphics, 0, 0);
+  },
+  restart: function() {
+    this.graphics.clear();
   }
 }
 
 
 
-// ---------------------------------------------------- SIEDEBAR
+// ---------------------------------------------------- SIDEBAR
 
 
 let SIDEBAR_SIZE = createVector(150, SOUP_AREA.y); // falta el margin.
@@ -221,29 +236,180 @@ let SIDEBAR_START_POINT = createVector(
 
 let sidebar = {
   graphics: createGraphics(windowWidth, windowHeight),
-  size: createVector(150, 400),
+  size: createVector(150, 360),
   pos: createVector( 
     SOUP_START_POINT.x + SOUP_AREA.x + SOUP_MARGIN, 
     SOUP_START_POINT.y),
   words_margin: 34,
   word_positions: {},
 
+  setup: function() {
+    this.graphics.noFill();
+    this.graphics.textFont('Cursive');
+    this.graphics.textAlign(CENTER, TOP);
+    this.graphics.textSize(12);
+  },
   drawContainer: function() {
     this.graphics.rect(this.pos.x, this.pos.y, this.size.x, this.size.y, RECT_RADIUS);
   },
   drawWords: function() {
-    this.graphics.textAlign(LEFT, CENTER);
-    this.graphics.textSize(12);
-
-    let actual_pos = this.pos.copy();
+    this.graphics.fill('black');
+    let actual_pos = this.pos.copy().add(this.size.x/2, this.words_margin, 0);
 
     soup.completed_words.forEach(WORD => {
-      this.graphics.text('· ' + WORD.toUpperCase(), actual_pos.x, actual_pos.y);
+      this.graphics.text(WORD.toUpperCase(), actual_pos.x, actual_pos.y);
       this.word_positions[WORD.toUpperCase()] = actual_pos.copy();
       actual_pos.add(0, this.words_margin);
     })
   },
+  draw: function() {
+    this.drawContainer();
+    this.drawWords();
+
+    image(this.graphics, 0, 0);
+  },
+  restart: function() {
+    this.graphics.clear();
+  }
 }
+
+
+
+// ---------------------------------------------------- SIDEBAR UNDERLINES
+
+
+let sidebar_underlines = {
+  graphics: createGraphics(windowWidth, windowHeight),
+  size: createVector(sidebar.size.x*.6, 10),
+  color: color(0,0,0,50),
+  stroke_color: color(0,0,0,50),
+  positions: [],
+
+  setup: function() {
+    this.graphics.fill(this.color);
+    this.graphics.stroke(this.stroke);
+    this.graphics.strokeWeight(this.strokeWeight);
+  },
+  erase: function() {
+    this.graphics.clear();
+  },
+  draw: function() {
+    this.positions.forEach(POS => {
+      this.graphics.rect(POS.x, POS.y, this.size.x, this.size.y, RECT_RADIUS);
+    })
+
+    image(this.graphics, 0, 0);
+  },
+  mark_word: function(WORD) {
+    this.positions.push(sidebar.word_positions[WORD].copy());
+
+    this.erase();
+    this.draw();
+  },
+}
+
+
+
+// ---------------------------------------------------- SELECTION
+
+
+let RECTANGLE = {x: -(CELL_SIZE/2), y: -(CELL_SIZE/2), width: CELL_SIZE, height: CELL_SIZE, radius: 20};
+let RECT_COLOR = color(0,0,250,50);
+let RECT_COLOR_COMPLETED = color(0,250,0,50);
+let RECT_STROKE_COLOR = color('black')
+
+
+let selection = {
+  graphics: createGraphics(windowWidth, windowHeight),
+  pos: createVector((CELL_SIZE/2), -(CELL_SIZE/2)),
+  size: createVector(CELL_SIZE, CELL_SIZE),
+  color: color(0,0,250,50),
+  completed_color: color(0,250,0,50),
+  stroke_color: color('black'),
+
+  setup: function() {
+    this.graphics.angleMode(DEGREES);
+    this.graphics.fill(this.color);
+    this.graphics.stroke(this.stroke_color);
+  },
+  draw: function() {
+    if (!pressed_soup_area) return;
+
+    // update selection rotation and translation only if mouse still in soup area.
+    // if not in soup area, keep show selection with last variables.
+    if (isOnSoupArea(mouse)) {
+      let actual_height = 0;
+      let actual_rotation = 0;
+
+      // round angle to nearest 45 multiple.
+      // then save it on last_rotation.
+      let RECT_VECTOR = mouse.sub(last_click);
+      let RECT_VECTOR_ROTATION = atan2(RECT_VECTOR.y, RECT_VECTOR.x) + 270;
+      actual_rotation = Math.round(RECT_VECTOR_ROTATION / 45) * 45;
+
+      // round magnitud to nearest cell_unit multiple.     
+      // then save it on last_height.
+      let IS_DIAGONAL = DIAGONAL_ROTATIONS.includes(last_rotation);
+      let CELL_UNIT = IS_DIAGONAL ? CELL_SIZE_DIAGONAL : CELL_SIZE;
+      let CELL_UNITS_IN_MAGNITUD = Math.floor( (RECT_VECTOR.mag() + (CELL_UNIT / 2)) / CELL_UNIT);
+      let MAGNITUD_TO_CELL_UNIT = CELL_UNITS_IN_MAGNITUD * CELL_UNIT;
+      actual_height = RECTANGLE.height + MAGNITUD_TO_CELL_UNIT;
+
+
+      // check if the magnitude of the selection is contained in soup area.
+      let check_point = p5.Vector.fromAngle(radians(actual_rotation + 90), actual_height - (CELL_SIZE/1.5));
+      check_point.add(last_click);
+
+      if (isOnSoupArea(check_point)) {
+        last_rotation = actual_rotation;
+        last_height = actual_height;
+        last_selected_cell_pos = p5.Vector.fromAngle(radians(last_rotation + 90), last_height - (CELL_SIZE/1.5));
+        last_selected_cell_pos.add(last_click);
+      }
+
+      //circle(check_point.x, check_point.y, 5);
+    }
+    this.graphics.push();
+    this.graphics.circle(last_selected_cell_pos.x, last_selected_cell_pos.y, 5);
+    this.graphics.translate(last_click);
+    this.graphics.rotate(last_rotation);
+    this.graphics.rect(this.pos.x, this.pos.y, this.size.x, last_height, RECT_RADIUS);
+    this.graphics.pop();
+  }
+}
+
+
+
+// ---------------------------------------------------- SOUP SELECTIONS
+
+
+let soup_selections = {
+  graphics: createGraphics(windowWidth, windowHeight),
+
+  draw: function() {
+    this.graphics.push()
+    this.graphics.translate(last_click);
+    this.graphics.rotate(last_rotation);
+    this.graphics.rect(selection.pos.x, selection.pos.y, selection.size.x, last_height, RECT_RADIUS);
+    this.graphics.pop();
+
+    image(this.graphics, 0, 0);
+  },
+  restart: function() {
+    this.graphics.clear();
+  }
+}
+
+
+
+// ---------------------------------------------------- GAME SIZE
+
+
+const GAME_SIZE = createVector(
+  soup.size.x + (SOUP_MARGIN*3) + sidebar.size.x,
+  soup.size.y + (SOUP_MARGIN*2));
+
+const GAME_POS = createVector(GAME_MARGIN, GAME_MARGIN); // ojo al cambiar esto.
 
 
 
@@ -252,8 +418,8 @@ let sidebar = {
 
 const BUTTON_SIZE = createVector(sidebar.size.x, 28);
 const BUTTON_POS = createVector(
-  CANVAS_SIZE.x - SOUP_MARGIN - BUTTON_SIZE.x,
-  CANVAS_SIZE.y - SOUP_MARGIN - BUTTON_SIZE.y);
+  GAME_SIZE.x - SOUP_MARGIN - BUTTON_SIZE.x,
+  GAME_SIZE.y - SOUP_MARGIN - BUTTON_SIZE.y);
 
 let restart_bttn = {
   graphics: createGraphics(windowWidth, windowHeight),
@@ -271,32 +437,37 @@ let restart_bttn = {
     this.graphics.textAlign(CENTER, CENTER);
     this.graphics.textSize(11);
     this.graphics.text(
-      'RESTART', 
+      'NEXT LEVEL', 
       this.pos.x + (this.size.x/2), 
       this.pos.y + (this.size.y/2));
   },
   draw: function() {
     this.drawContainer();
     this.drawText();
+
+    image(this.graphics, 0, 0);
   }
 }
 
 
 
-let CANVAS_SIZE = createVector(
-  SOUP_AREA.x + (SOUP_MARGIN*2) + SIDEBAR_SIZE.x,
-  SOUP_AREA.y + (SOUP_MARGIN*2));
+// ---------------------------------------------------- CONTAINER
 
 
-let RECTANGLE = {x: -(CELL_SIZE/2), y: -(CELL_SIZE/2), width: CELL_SIZE, height: CELL_SIZE, radius: 20};
-let RECT_COLOR = color(0,0,250,50);
-let RECT_COLOR_COMPLETED = color(0,250,0,50);
-let RECT_STROKE_COLOR = color('black')
+let game_container = {
+  graphics: createGraphics(windowWidth, windowHeight),
 
-let UNDERLINE = {x1: 0, y1: 0, x2: SIDEBAR_SIZE.x*.6, y2: 0};
-let UNDERLINE_COLOR = color('black');
-let UNDERLINE_STROKE_COLOR = color(0,0,0,50)
-let UNDERLNE_STROKE_WEIGHT = 4;
+  draw: function() {
+    this.graphics.strokeWeight(2);
+    this.graphics.rect(GAME_POS.x, GAME_POS.y, GAME_SIZE.x, GAME_SIZE.y, RECT_RADIUS);
+
+    image(this.graphics, 0, 0);
+  }
+}
+
+
+
+
 
 
 let last_click = createVector(0, 0);
@@ -309,7 +480,6 @@ let pressed_soup_area = false;
 
 let mouse_cells = [];
 let string_words_cell_ids = {};
-let restart_button_pressed = false;
 
 
 // -------------------------------------------------------------- FUNCTIONS.
@@ -321,102 +491,38 @@ function setup() {
 
   angleMode(DEGREES);
   frameRate(30);
+  
 
-  drawBackgrounds()
-  restartGame();
+  game_container.draw();
+
+  soup.setup();
+  sidebar.setup();
+  selection.setup();
+
+  restart();
 }
 
-function drawBackgrounds() {
-  //fill('black');
-  //stroke('black');
-  strokeWeight(2);
-  rect(0, 0, CANVAS_SIZE.x, CANVAS_SIZE.y, RECT_RADIUS);
-}
-
-function restartGame() {
+function restart() {
   mouse_cells = [];
   string_words_cell_ids = {};
 
-  ui = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
-  selections = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
-  underlines = createGraphics(CANVAS_SIZE.x, CANVAS_SIZE.y);
+
+  soup.restart();
+  sidebar.restart();
+  soup_selections.restart();
 
 
-  ui.clear();
-  selections.clear();
-  underlines.clear();
-
-  //ui.background('white');
-  ui.fill('black');
-  ui.textFont('Cursive');
-
-  selections.angleMode(DEGREES);
-  selections.fill(RECT_COLOR_COMPLETED);
-  selections.stroke(RECT_STROKE_COLOR);
-  //selections.frameRate(30);
-
-  underlines.fill(RECT_COLOR);
-  underlines.stroke(RECT_STROKE_COLOR);
-  underlines.strokeWeight(UNDERLNE_STROKE_WEIGHT);
-
-  drawRestartBtn();
-  drawLines();
-  drawSoup();
-  algorithm();
-  drawSidebar();
-}
-
-function drawWordSelection() {
-  if (!pressed_soup_area) return;
-
-  // update selection rotation and translation only if mouse still in soup area.
-  // if not in soup area, keep show selection with last variables.
-  if (isOnSoupArea(mouse)) {
-    let actual_height = 0;
-    let actual_rotation = 0;
-
-    // round angle to nearest 45 multiple.
-    // then save it on last_rotation.
-    let RECT_VECTOR = mouse.sub(last_click);
-    let RECT_VECTOR_ROTATION = atan2(RECT_VECTOR.y, RECT_VECTOR.x) + 270;
-    actual_rotation = Math.round(RECT_VECTOR_ROTATION / 45) * 45;
-
-    // round magnitud to nearest cell_unit multiple.     
-    // then save it on last_height.
-    let IS_DIAGONAL = DIAGONAL_ROTATIONS.includes(last_rotation);
-    let CELL_UNIT = IS_DIAGONAL ? CELL_SIZE_DIAGONAL : CELL_SIZE;
-    let CELL_UNITS_IN_MAGNITUD = Math.floor( (RECT_VECTOR.mag() + (CELL_UNIT / 2)) / CELL_UNIT);
-    let MAGNITUD_TO_CELL_UNIT = CELL_UNITS_IN_MAGNITUD * CELL_UNIT;
-    actual_height = RECTANGLE.height + MAGNITUD_TO_CELL_UNIT;
-
-
-    // check if the magnitude of the selection is contained in soup area.
-    let check_point = p5.Vector.fromAngle(radians(actual_rotation + 90), actual_height - (CELL_SIZE/1.5));
-    check_point.add(last_click);
-
-    if (isOnSoupArea(check_point)) {
-      last_rotation = actual_rotation;
-      last_height = actual_height;
-      last_selected_cell_pos = p5.Vector.fromAngle(radians(last_rotation + 90), last_height - (CELL_SIZE/1.5));
-      last_selected_cell_pos.add(last_click);
-    }
-
-    //circle(check_point.x, check_point.y, 5);
-  }
-  circle(last_selected_cell_pos.x, last_selected_cell_pos.y, 5);
-  translate(last_click);
-  rotate(last_rotation);
-  rect(RECTANGLE.x, RECTANGLE.y, RECTANGLE.width, last_height, RECTANGLE.radius);
+  soup.draw();
+  sidebar.draw();
+  restart_bttn.draw();
 }
 
 function draw() {
-  image(ui, 0, 0);
-  image(selections, 0, 0);
-  image(underlines, 0, 0);
+  image(selection.graphics, 0, 0);
 
   // transform mouse positions to vector variable for Math purpouses.
   [mouse.x, mouse.y] = [mouseX, mouseY];
-  drawWordSelection();
+  selection.draw();
 }
 
 // return a bool if vector is inside de soup area.
@@ -456,36 +562,25 @@ function cellIDsToString(cell_id1, cell_id2) {
 
 function mousePressed() {
   console.log('PRESSED');
-  fill(RECT_COLOR);
-
-  // transform mouse position to cell position.
-  // then save it on last_click.
-
+  
   pressed_soup_area = isOnSoupArea(mouse);
   if (pressed_soup_area) {
     let MOUSE_TO_CELL_ID = vectorToCellID(mouse)
     let MOUSE_TO_CELL_POSITION = p5.Vector.mult(MOUSE_TO_CELL_ID, CELL_SIZE);
     last_click = MOUSE_TO_CELL_POSITION.add(SOUP_START_POINT_CENTER);
 
-    //console.log(MOUSE_TO_CELL_ID, 'look at this');
+    console.log(MOUSE_TO_CELL_ID, 'look at this');
     mouse_cells.push(MOUSE_TO_CELL_ID);
-  }
-
-  if (mouseX >= BUTTON_POS.x && mouseX < (BUTTON_POS.x + BUTTON_SIZE.x) && 
-    mouseY >= BUTTON_POS.y && mouseY < (BUTTON_POS.y + BUTTON_SIZE.y)) {
-    restart_button_pressed = true;
   }
 }
 
 function mouseReleased() {
   console.log('RELEASED');
   pressed_soup_area = false;
-  if (restart_button_pressed) {
-    if (mouseX >= BUTTON_POS.x && mouseX < (BUTTON_POS.x + BUTTON_SIZE.x) && 
-      mouseY >= BUTTON_POS.y && mouseY < (BUTTON_POS.y + BUTTON_SIZE.y)) {
-      restart_button_pressed = false;
-      restartGame();
-    }
+  if (mouseX >= restart_bttn.pos.x && mouseX < (restart_bttn.pos.x + restart_bttn.size.x) && 
+    mouseY >= restart_bttn.pos.y && mouseY < (restart_bttn.pos.y + restart_bttn.size.y)) { // restart button
+    restart();
+
   } else {
     let LAST_SELECTED_CELL_ID = vectorToCellID(last_selected_cell_pos);
     mouse_cells.push(LAST_SELECTED_CELL_ID);
@@ -497,21 +592,10 @@ function mouseReleased() {
     console.log(MOUSE_CELL_ID_STRING)
 
     if (string_words_cell_ids[MOUSE_CELL_ID_STRING]) {
-      selections.push()
-      selections.translate(last_click);
-      selections.rotate(last_rotation);
-      selections.rect(RECTANGLE.x, RECTANGLE.y, RECTANGLE.width, last_height, RECTANGLE.radius);
-      selections.pop();
 
-
+      soup_selections.draw();
       let word = string_words_cell_ids[MOUSE_CELL_ID_STRING];
-
-
-      let UNDERLINE_POS = sidebar_word_positions[word];
-      underlines.push()
-      underlines.translate(UNDERLINE_POS);
-      underlines.line(UNDERLINE.x1, UNDERLINE.y1, UNDERLINE.x2, UNDERLINE.y2);
-      underlines.pop();
+      sidebar_underlines.mark_word(word);
 
       string_words_cell_ids[MOUSE_CELL_ID_STRING] = undefined;
       string_words_cell_ids[ignore] = undefined;
