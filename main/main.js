@@ -214,8 +214,6 @@ let soup = {
     this.drawDivisions();
     this.drawLetters();
     this.drawWords();
-
-    image(this.graphics, 0, 0);
   },
   restart: function() {
     this.graphics.clear();
@@ -246,7 +244,7 @@ let sidebar = {
   setup: function() {
     this.graphics.noFill();
     this.graphics.textFont('Cursive');
-    this.graphics.textAlign(CENTER, TOP);
+    this.graphics.textAlign(CENTER, CENTER);
     this.graphics.textSize(12);
   },
   drawContainer: function() {
@@ -265,8 +263,6 @@ let sidebar = {
   draw: function() {
     this.drawContainer();
     this.drawWords();
-
-    image(this.graphics, 0, 0);
   },
   restart: function() {
     this.graphics.clear();
@@ -280,14 +276,15 @@ let sidebar = {
 
 let sidebar_underlines = {
   graphics: createGraphics(windowWidth, windowHeight),
-  size: createVector(sidebar.size.x*.6, 10),
+  size: createVector(sidebar.size.x*.7, 10),
   color: color(0,0,0,50),
   stroke_color: color(0,0,0,50),
   positions: [],
 
   setup: function() {
+    this.graphics.rectMode(CENTER);
     this.graphics.fill(this.color);
-    this.graphics.stroke(this.stroke);
+    this.graphics.stroke(this.stroke_color);
     this.graphics.strokeWeight(this.strokeWeight);
   },
   erase: function() {
@@ -297,8 +294,6 @@ let sidebar_underlines = {
     this.positions.forEach(POS => {
       this.graphics.rect(POS.x, POS.y, this.size.x, this.size.y, RECT_RADIUS);
     })
-
-    image(this.graphics, 0, 0);
   },
   mark_word: function(WORD) {
     this.positions.push(sidebar.word_positions[WORD].copy());
@@ -313,19 +308,16 @@ let sidebar_underlines = {
 // ---------------------------------------------------- SELECTION
 
 
-let RECTANGLE = {x: -(CELL_SIZE/2), y: -(CELL_SIZE/2), width: CELL_SIZE, height: CELL_SIZE, radius: 20};
-let RECT_COLOR = color(0,0,250,50);
-let RECT_COLOR_COMPLETED = color(0,250,0,50);
-let RECT_STROKE_COLOR = color('black')
-
-
 let selection = {
   graphics: createGraphics(windowWidth, windowHeight),
-  pos: createVector((CELL_SIZE/2), -(CELL_SIZE/2)),
+  pos: createVector(-(CELL_SIZE/2), -(CELL_SIZE/2)),
   size: createVector(CELL_SIZE, CELL_SIZE),
   color: color(0,0,250,50),
   completed_color: color(0,250,0,50),
   stroke_color: color('black'),
+  rect_radius: 25,
+  last_height: 0,
+  last_rotation: 0,
 
   setup: function() {
     this.graphics.angleMode(DEGREES);
@@ -349,11 +341,11 @@ let selection = {
 
       // round magnitud to nearest cell_unit multiple.     
       // then save it on last_height.
-      let IS_DIAGONAL = DIAGONAL_ROTATIONS.includes(last_rotation);
+      let IS_DIAGONAL = DIAGONAL_ROTATIONS.includes(this.last_rotation);
       let CELL_UNIT = IS_DIAGONAL ? CELL_SIZE_DIAGONAL : CELL_SIZE;
       let CELL_UNITS_IN_MAGNITUD = Math.floor( (RECT_VECTOR.mag() + (CELL_UNIT / 2)) / CELL_UNIT);
       let MAGNITUD_TO_CELL_UNIT = CELL_UNITS_IN_MAGNITUD * CELL_UNIT;
-      actual_height = RECTANGLE.height + MAGNITUD_TO_CELL_UNIT;
+      actual_height = this.size.y + MAGNITUD_TO_CELL_UNIT;
 
 
       // check if the magnitude of the selection is contained in soup area.
@@ -361,20 +353,23 @@ let selection = {
       check_point.add(last_click);
 
       if (isOnSoupArea(check_point)) {
-        last_rotation = actual_rotation;
-        last_height = actual_height;
-        last_selected_cell_pos = p5.Vector.fromAngle(radians(last_rotation + 90), last_height - (CELL_SIZE/1.5));
+        this.last_rotation = actual_rotation;
+        this.last_height = actual_height;
+        last_selected_cell_pos = p5.Vector.fromAngle(radians(this.last_rotation + 90), this.last_height - (CELL_SIZE/1.5));
         last_selected_cell_pos.add(last_click);
       }
 
       //circle(check_point.x, check_point.y, 5);
     }
+
     this.graphics.push();
     this.graphics.circle(last_selected_cell_pos.x, last_selected_cell_pos.y, 5);
     this.graphics.translate(last_click);
-    this.graphics.rotate(last_rotation);
-    this.graphics.rect(this.pos.x, this.pos.y, this.size.x, last_height, RECT_RADIUS);
+    this.graphics.rotate(this.last_rotation);
+    this.graphics.rect(this.pos.x, this.pos.y, this.size.x, this.last_height, this.rect_radius);
     this.graphics.pop();
+
+    console.log('SELECTION DRAW FUNCTION END');
   }
 }
 
@@ -386,14 +381,17 @@ let selection = {
 let soup_selections = {
   graphics: createGraphics(windowWidth, windowHeight),
 
+  setup: function() {
+    this.graphics.angleMode(DEGREES);
+    this.graphics.fill(selection.completed_color);
+  },
   draw: function() {
     this.graphics.push()
     this.graphics.translate(last_click);
-    this.graphics.rotate(last_rotation);
-    this.graphics.rect(selection.pos.x, selection.pos.y, selection.size.x, last_height, RECT_RADIUS);
+    this.graphics.rotate(selection.last_rotation);
+    this.graphics.rect(selection.pos.x, selection.pos.y, selection.size.x, 
+      selection.last_height, selection.rect_radius);
     this.graphics.pop();
-
-    image(this.graphics, 0, 0);
   },
   restart: function() {
     this.graphics.clear();
@@ -444,8 +442,6 @@ let restart_bttn = {
   draw: function() {
     this.drawContainer();
     this.drawText();
-
-    image(this.graphics, 0, 0);
   }
 }
 
@@ -460,8 +456,6 @@ let game_container = {
   draw: function() {
     this.graphics.strokeWeight(2);
     this.graphics.rect(GAME_POS.x, GAME_POS.y, GAME_SIZE.x, GAME_SIZE.y, RECT_RADIUS);
-
-    image(this.graphics, 0, 0);
   }
 }
 
@@ -471,8 +465,6 @@ let game_container = {
 
 
 let last_click = createVector(0, 0);
-let last_height = 0;
-let last_rotation = 0;
 let last_selected_cell_pos = createVector(0, 0);
 
 let mouse = createVector(0, 0);
@@ -498,6 +490,8 @@ function setup() {
   soup.setup();
   sidebar.setup();
   selection.setup();
+  soup_selections.setup();
+  sidebar_underlines.setup();
 
   restart();
 }
@@ -518,10 +512,17 @@ function restart() {
 }
 
 function draw() {
-  image(selection.graphics, 0, 0);
-
+  image(game_container.graphics,0,0);
+  image(soup.graphics,0,0);
+  image(restart_bttn.graphics,0,0);
+  image(sidebar.graphics,0,0);
+  image(sidebar_underlines.graphics,0,0);
+  image(soup_selections.graphics,0,0);
+  image(selection.graphics,0,0);
+  selection.graphics.clear();
   // transform mouse positions to vector variable for Math purpouses.
   [mouse.x, mouse.y] = [mouseX, mouseY];
+
   selection.draw();
 }
 
@@ -546,7 +547,7 @@ function vectorToCellID(vec) {
   CELL_UNITS_IN_MAGNITUD.y = Math.round(CELL_UNITS_IN_MAGNITUD.y);
 
   let CELL_ID = CELL_UNITS_IN_MAGNITUD
-  console.log(CELL_ID, 'CELL_ID')
+  //console.log(CELL_ID, 'CELL_ID')
   return CELL_ID;
 }
 
@@ -569,7 +570,7 @@ function mousePressed() {
     let MOUSE_TO_CELL_POSITION = p5.Vector.mult(MOUSE_TO_CELL_ID, CELL_SIZE);
     last_click = MOUSE_TO_CELL_POSITION.add(SOUP_START_POINT_CENTER);
 
-    console.log(MOUSE_TO_CELL_ID, 'look at this');
+    console.log(MOUSE_TO_CELL_ID, 'CELL ID');
     mouse_cells.push(MOUSE_TO_CELL_ID);
   }
 }
