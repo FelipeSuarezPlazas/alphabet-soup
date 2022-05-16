@@ -4,22 +4,32 @@
 
 new p5();
 
-// -------------------------------------------------------------- VARS.
 
 
 
 
-/**
 
-Lets start with the soup.
-it has a rectangle, lines, letters, and special letters.
+/* TODO
 
-all of that is drawn just one time per game.
+Loading screen when next level.
+
+Available button only when all words finished.
+
+Button change color, when available.
+
+Random words each time.
+
+
 */
 
 
 
 
+
+
+
+
+// ---------------------------------------------------------------------------- VARS
 
 
 const GAME_MARGIN = 30;
@@ -48,7 +58,22 @@ let WORDS = ['playground', 'clothes', 'ball', 'learning', 'finland', 'airplane',
 WORDS = WORDS.sort((a, b) => b.length - a.length);
 
 
-// ---------------------------------------------------- SOUP
+// ---------------------------------------------------------------------------- SOUP
+
+
+let utils = {
+  last_click: createVector(0, 0),
+  last_selected_cell_pos: createVector(0, 0),
+
+  mouse: createVector(0, 0),
+  pressed_soup_area: false,
+
+  mouse_cells: [],
+  string_words_cell_ids: {},
+}
+
+
+// ---------------------------------------------------------------------------- SOUP
 
 
 const CELL_SIZE = 30;
@@ -69,18 +94,21 @@ let soup = {
   completed_words: [],
   completed_words_counter: 0,
   completed_words_limit: 8,
+  color: color('white'),
 
   setup: function() {
+    this.graphics.fill(this.color);
     this.graphics.textSize(15);
     this.graphics.textFont('Cursive');
   },
   drawContainer: function() {
+    this.graphics.rectMode(CORNER);
     this.graphics.stroke('black');
-    this.graphics.fill('white');
+    this.graphics.fill(this.color);
     this.graphics.rect(this.pos.x, this.pos.y, this.size.x, this.size.y, RECT_RADIUS);
   },
   drawDivisions: function() {
-    this.graphics.stroke('black');
+    this.graphics.stroke(0,0,0);
     // ----- rows.
     for (let i = 1; i <= SOUP_LETTERS_AMOUNT.y-1; i++) {
       this.graphics.line(
@@ -181,8 +209,8 @@ let soup = {
 
             //console.log('12');
 
-            string_words_cell_ids[cell_id1] = WORD;
-            string_words_cell_ids[cell_id2] = WORD;
+            utils.string_words_cell_ids[cell_id1] = WORD;
+            utils.string_words_cell_ids[cell_id2] = WORD;
           }
         }
       } 
@@ -199,18 +227,23 @@ let soup = {
 
         let LETTER_POS = p5.Vector.mult(CELL_ID, CELL_SIZE);
 
+        //this.graphics.noFill();
+        this.graphics.noStroke();
         this.graphics.fill('white');
-        this.graphics.stroke('red');
+        this.graphics.rectMode(CENTER);
         this.graphics.square(
-          SOUP_START_POINT.x + LETTER_POS.x,
-          SOUP_START_POINT.y + LETTER_POS.y,
-          CELL_SIZE);
+          SOUP_START_POINT_CENTER.x + LETTER_POS.x,
+          SOUP_START_POINT_CENTER.y + LETTER_POS.y,
+          CELL_SIZE/2);
 
         //this.graphics.noStroke();
+        this.graphics.stroke('black');
         this.graphics.fill('black');
         this.graphics.text(LETTER, 
           SOUP_START_POINT_CENTER.x + LETTER_POS.x,
           SOUP_START_POINT_CENTER.y + LETTER_POS.y);
+
+        this.graphics.noStroke();
       })
     })
   },
@@ -229,14 +262,7 @@ let soup = {
 
 
 
-// ---------------------------------------------------- SIDEBAR
-
-
-let SIDEBAR_SIZE = createVector(150, SOUP_AREA.y); // falta el margin.
-let SIDEBAR_PADDING = createVector(10, 15);
-let SIDEBAR_START_POINT = createVector(
-  SOUP_START_POINT.x + SOUP_AREA.x + SOUP_MARGIN, 
-  SOUP_START_POINT.y);
+// ---------------------------------------------------------------------------- SIDEBAR
 
 
 let sidebar = {
@@ -255,7 +281,7 @@ let sidebar = {
     this.graphics.textSize(12);
   },
   drawContainer: function() {
-    this.graphics.fill('white');
+    this.graphics.fill(soup.color);
     this.graphics.rect(this.pos.x, this.pos.y, this.size.x, this.size.y, RECT_RADIUS);
   },
   drawWords: function() {
@@ -279,8 +305,100 @@ let sidebar = {
 }
 
 
+// ---------------------------------------------------------------------------- SELECTION
 
-// ---------------------------------------------------- SIDEBAR UNDERLINES
+
+let selection = {
+  graphics: createGraphics(windowWidth, windowHeight),
+  pos: createVector(-(CELL_SIZE/2), -(CELL_SIZE/2)),
+  size: createVector(CELL_SIZE, CELL_SIZE),
+  color: color(255,196,12,100),
+  completed_color: color(123,104,238, 120),
+  stroke_color: color('#7b68ee'),
+  rect_radius: 25,
+  last_height: 0,
+  last_rotation: 0,
+
+  setup: function() {
+    this.graphics.angleMode(DEGREES);
+    this.graphics.fill(this.color);
+    this.graphics.stroke(this.stroke_color);
+  },
+  draw: function() {
+    if (!utils.pressed_soup_area) return;
+
+    // update selection rotation and translation only if utils.mouse still in soup area.
+    // if not in soup area, keep show selection with last variables.
+    if (isOnSoupArea(utils.mouse)) {
+      let actual_height = 0;
+      let actual_rotation = 0;
+
+      // round angle to nearest 45 multiple.
+      // then save it on last_rotation.
+      let RECT_VECTOR = utils.mouse.sub(utils.last_click);
+      let RECT_VECTOR_ROTATION = atan2(RECT_VECTOR.y, RECT_VECTOR.x) + 270;
+      actual_rotation = Math.round(RECT_VECTOR_ROTATION / 45) * 45;
+
+      // round magnitud to nearest cell_unit multiple.     
+      // then save it on last_height.
+      let IS_DIAGONAL = DIAGONAL_ROTATIONS.includes(this.last_rotation);
+      let CELL_UNIT = IS_DIAGONAL ? CELL_SIZE_DIAGONAL : CELL_SIZE;
+      let CELL_UNITS_IN_MAGNITUD = Math.floor( (RECT_VECTOR.mag() + (CELL_UNIT / 2)) / CELL_UNIT);
+      let MAGNITUD_TO_CELL_UNIT = CELL_UNITS_IN_MAGNITUD * CELL_UNIT;
+      actual_height = this.size.y + MAGNITUD_TO_CELL_UNIT;
+
+
+      // check if the magnitude of the selection is contained in soup area.
+      let check_point = p5.Vector.fromAngle(radians(actual_rotation + 90), actual_height - (CELL_SIZE/1.5));
+      check_point.add(utils.last_click);
+
+      if (isOnSoupArea(check_point)) {
+        this.last_rotation = actual_rotation;
+        this.last_height = actual_height;
+        utils.last_selected_cell_pos = p5.Vector.fromAngle(radians(this.last_rotation + 90), this.last_height - (CELL_SIZE/1.5));
+        utils.last_selected_cell_pos.add(utils.last_click);
+      }
+
+      //circle(check_point.x, check_point.y, 5);
+    }
+
+    this.graphics.push();
+    this.graphics.circle(utils.last_selected_cell_pos.x, utils.last_selected_cell_pos.y, 5);
+    this.graphics.translate(utils.last_click);
+    this.graphics.rotate(this.last_rotation);
+    this.graphics.rect(this.pos.x, this.pos.y, this.size.x, this.last_height, this.rect_radius);
+    this.graphics.pop();
+
+    console.log('SELECTION DRAW FUNCTION END');
+  }
+}
+
+
+// ---------------------------------------------------------------------------- SOUP SELECTIONS
+
+
+let soup_selections = {
+  graphics: createGraphics(windowWidth, windowHeight),
+
+  setup: function() {
+    this.graphics.angleMode(DEGREES);
+    this.graphics.fill(selection.completed_color);
+  },
+  draw: function() {
+    this.graphics.push()
+    this.graphics.translate(utils.last_click);
+    this.graphics.rotate(selection.last_rotation);
+    this.graphics.rect(selection.pos.x, selection.pos.y, selection.size.x, 
+      selection.last_height, selection.rect_radius);
+    this.graphics.pop();
+  },
+  restart: function() {
+    this.graphics.clear();
+  }
+}
+
+
+// ---------------------------------------------------------------------------- SIDEBAR UNDERLINES
 
 
 let sidebar_underlines = {
@@ -317,120 +435,29 @@ let sidebar_underlines = {
 }
 
 
+// ---------------------------------------------------------------------------- CONTAINER
 
-// ---------------------------------------------------- SELECTION
 
-
-let selection = {
+let container = {
   graphics: createGraphics(windowWidth, windowHeight),
-  pos: createVector(-(CELL_SIZE/2), -(CELL_SIZE/2)),
-  size: createVector(CELL_SIZE, CELL_SIZE),
-  color: color(0,0,250,50),
-  completed_color: color(0,250,0,50),
-  stroke_color: color('black'),
-  rect_radius: 25,
-  last_height: 0,
-  last_rotation: 0,
+  pos: createVector(GAME_MARGIN, GAME_MARGIN),
+  size: createVector(
+    soup.size.x + (SOUP_MARGIN*3) + sidebar.size.x,
+    soup.size.y + (SOUP_MARGIN*2)),
+  color: color('#ccccff'), // purple
 
-  setup: function() {
-    this.graphics.angleMode(DEGREES);
+  draw: function() {
     this.graphics.fill(this.color);
-    this.graphics.stroke(this.stroke_color);
-  },
-  draw: function() {
-    if (!pressed_soup_area) return;
-
-    // update selection rotation and translation only if mouse still in soup area.
-    // if not in soup area, keep show selection with last variables.
-    if (isOnSoupArea(mouse)) {
-      let actual_height = 0;
-      let actual_rotation = 0;
-
-      // round angle to nearest 45 multiple.
-      // then save it on last_rotation.
-      let RECT_VECTOR = mouse.sub(last_click);
-      let RECT_VECTOR_ROTATION = atan2(RECT_VECTOR.y, RECT_VECTOR.x) + 270;
-      actual_rotation = Math.round(RECT_VECTOR_ROTATION / 45) * 45;
-
-      // round magnitud to nearest cell_unit multiple.     
-      // then save it on last_height.
-      let IS_DIAGONAL = DIAGONAL_ROTATIONS.includes(this.last_rotation);
-      let CELL_UNIT = IS_DIAGONAL ? CELL_SIZE_DIAGONAL : CELL_SIZE;
-      let CELL_UNITS_IN_MAGNITUD = Math.floor( (RECT_VECTOR.mag() + (CELL_UNIT / 2)) / CELL_UNIT);
-      let MAGNITUD_TO_CELL_UNIT = CELL_UNITS_IN_MAGNITUD * CELL_UNIT;
-      actual_height = this.size.y + MAGNITUD_TO_CELL_UNIT;
-
-
-      // check if the magnitude of the selection is contained in soup area.
-      let check_point = p5.Vector.fromAngle(radians(actual_rotation + 90), actual_height - (CELL_SIZE/1.5));
-      check_point.add(last_click);
-
-      if (isOnSoupArea(check_point)) {
-        this.last_rotation = actual_rotation;
-        this.last_height = actual_height;
-        last_selected_cell_pos = p5.Vector.fromAngle(radians(this.last_rotation + 90), this.last_height - (CELL_SIZE/1.5));
-        last_selected_cell_pos.add(last_click);
-      }
-
-      //circle(check_point.x, check_point.y, 5);
-    }
-
-    this.graphics.push();
-    this.graphics.circle(last_selected_cell_pos.x, last_selected_cell_pos.y, 5);
-    this.graphics.translate(last_click);
-    this.graphics.rotate(this.last_rotation);
-    this.graphics.rect(this.pos.x, this.pos.y, this.size.x, this.last_height, this.rect_radius);
-    this.graphics.pop();
-
-    console.log('SELECTION DRAW FUNCTION END');
+    this.graphics.strokeWeight(2);
+    this.graphics.rect(this.pos.x, this.pos.y, this.size.x, this.size.y, RECT_RADIUS);
   }
 }
 
 
-
-// ---------------------------------------------------- SOUP SELECTIONS
-
-
-let soup_selections = {
-  graphics: createGraphics(windowWidth, windowHeight),
-
-  setup: function() {
-    this.graphics.angleMode(DEGREES);
-    this.graphics.fill(selection.completed_color);
-  },
-  draw: function() {
-    this.graphics.push()
-    this.graphics.translate(last_click);
-    this.graphics.rotate(selection.last_rotation);
-    this.graphics.rect(selection.pos.x, selection.pos.y, selection.size.x, 
-      selection.last_height, selection.rect_radius);
-    this.graphics.pop();
-  },
-  restart: function() {
-    this.graphics.clear();
-  }
-}
-
-
-
-// ---------------------------------------------------- GAME SIZE
-
-
-const GAME_SIZE = createVector(
-  soup.size.x + (SOUP_MARGIN*3) + sidebar.size.x,
-  soup.size.y + (SOUP_MARGIN*2));
-
-const GAME_POS = createVector(GAME_MARGIN, GAME_MARGIN); // ojo al cambiar esto.
-
-
-
-// ---------------------------------------------------- RESTART BUTTON
+// ---------------------------------------------------------------------------- RESTART BUTTON
 
 
 const BUTTON_SIZE = createVector(sidebar.size.x, 28);
-const BUTTON_POS = createVector(
-  GAME_SIZE.x - SOUP_MARGIN - BUTTON_SIZE.x,
-  GAME_SIZE.y - SOUP_MARGIN - BUTTON_SIZE.y);
 
 let restart_bttn = {
   graphics: createGraphics(windowWidth, windowHeight),
@@ -459,37 +486,7 @@ let restart_bttn = {
 }
 
 
-
-// ---------------------------------------------------- CONTAINER
-
-
-let game_container = {
-  graphics: createGraphics(windowWidth, windowHeight),
-  pos: GAME_POS.copy(),
-  size: GAME_SIZE.copy(),
-
-  draw: function() {
-    this.graphics.strokeWeight(2);
-    this.graphics.rect(GAME_POS.x, GAME_POS.y, GAME_SIZE.x, GAME_SIZE.y, RECT_RADIUS);
-  }
-}
-
-
-// ---------------------------------------------------- VARS
-
-
-
-let last_click = createVector(0, 0);
-let last_selected_cell_pos = createVector(0, 0);
-
-let mouse = createVector(0, 0);
-let pressed_soup_area = false;
-
-let mouse_cells = [];
-let string_words_cell_ids = {};
-
-
-// -------------------------------------------------------------- FUNCTIONS.
+// ---------------------------------------------------------------------------- FUNCTIONS.
 
 
 function setup() {
@@ -498,9 +495,8 @@ function setup() {
 
   angleMode(DEGREES);
   frameRate(30);
-  
 
-  game_container.draw();
+  container.draw();
 
   soup.setup();
   sidebar.setup();
@@ -513,8 +509,8 @@ function setup() {
 
 function restart() {
   console.log('RESTART FUNCTION');
-  mouse_cells = [];
-  string_words_cell_ids = {};
+  utils.mouse_cells = [];
+  utils.string_words_cell_ids = {};
 
   console.log('RESTART METHODS');
   soup.restart();
@@ -529,7 +525,7 @@ function restart() {
 }
 
 function draw() {
-  image(game_container.graphics,0,0);
+  image(container.graphics,0,0);
   image(soup.graphics,0,0);
   image(restart_bttn.graphics,0,0);
   image(sidebar.graphics,0,0);
@@ -551,8 +547,8 @@ function draw() {
   */
 
   selection.graphics.clear();
-  // transform mouse positions to vector variable for Math purpouses.
-  [mouse.x, mouse.y] = [mouseX, mouseY];
+  // transform utils.mouse positions to vector variable for Math purpouses.
+  [utils.mouse.x, utils.mouse.y] = [mouseX, mouseY];
 
   selection.draw();
 }
@@ -562,7 +558,7 @@ function isOnSoupArea(v) {
   if (v.x > SOUP_START_POINT.x
       && v.x < (SOUP_START_POINT.x + SOUP_AREA.x)
       && v.y > SOUP_START_POINT.y
-      && v.y < (SOUP_START_POINT.y + SOUP_AREA.y)) { // el mouse esta dentro de la sopa de letras.
+      && v.y < (SOUP_START_POINT.y + SOUP_AREA.y)) { // el utils.mouse esta dentro de la sopa de letras.
 
     return true;
   } else {
@@ -595,45 +591,45 @@ function cellIDsToString(cell_id1, cell_id2) {
 function mousePressed() {
   console.log('PRESSED');
   
-  pressed_soup_area = isOnSoupArea(mouse);
-  if (pressed_soup_area) {
-    let MOUSE_TO_CELL_ID = vectorToCellID(mouse)
+  utils.pressed_soup_area = isOnSoupArea(utils.mouse);
+  if (utils.pressed_soup_area) {
+    let MOUSE_TO_CELL_ID = vectorToCellID(utils.mouse)
     let MOUSE_TO_CELL_POSITION = p5.Vector.mult(MOUSE_TO_CELL_ID, CELL_SIZE);
-    last_click = MOUSE_TO_CELL_POSITION.add(SOUP_START_POINT_CENTER);
+    utils.last_click = MOUSE_TO_CELL_POSITION.add(SOUP_START_POINT_CENTER);
 
     console.log(MOUSE_TO_CELL_ID, 'CELL ID');
-    mouse_cells.push(MOUSE_TO_CELL_ID);
+    utils.mouse_cells.push(MOUSE_TO_CELL_ID);
   }
 }
 
 function mouseReleased() {
   console.log('RELEASED');
-  pressed_soup_area = false;
+  utils.pressed_soup_area = false;
   if (mouseX >= restart_bttn.pos.x && mouseX < (restart_bttn.pos.x + restart_bttn.size.x) && 
     mouseY >= restart_bttn.pos.y && mouseY < (restart_bttn.pos.y + restart_bttn.size.y)) { // restart button
     restart();
 
   } else {
-    let LAST_SELECTED_CELL_ID = vectorToCellID(last_selected_cell_pos);
-    mouse_cells.push(LAST_SELECTED_CELL_ID);
+    let LAST_SELECTED_CELL_ID = vectorToCellID(utils.last_selected_cell_pos);
+    utils.mouse_cells.push(LAST_SELECTED_CELL_ID);
 
-    //console.log(mouse_cells[0], mouse_cells[1], 'NOW LOOK AT THISS');
+    //console.log(utils.mouse_cells[0], utils.mouse_cells[1], 'NOW LOOK AT THISS');
     console.log('one');
-    let [MOUSE_CELL_ID_STRING, ignore] = cellIDsToString(mouse_cells[0], mouse_cells[1]);
+    let [MOUSE_CELL_ID_STRING, ignore] = cellIDsToString(utils.mouse_cells[0], utils.mouse_cells[1]);
 
     console.log(MOUSE_CELL_ID_STRING)
 
-    if (string_words_cell_ids[MOUSE_CELL_ID_STRING]) {
+    if (utils.string_words_cell_ids[MOUSE_CELL_ID_STRING]) {
 
       soup_selections.draw();
-      let word = string_words_cell_ids[MOUSE_CELL_ID_STRING];
+      let word = utils.string_words_cell_ids[MOUSE_CELL_ID_STRING];
       sidebar_underlines.mark_word(word);
 
-      string_words_cell_ids[MOUSE_CELL_ID_STRING] = undefined;
-      string_words_cell_ids[ignore] = undefined;
+      utils.string_words_cell_ids[MOUSE_CELL_ID_STRING] = undefined;
+      utils.string_words_cell_ids[ignore] = undefined;
     }
 
-    mouse_cells = [];
+    utils.mouse_cells = [];
   }
 }
 
