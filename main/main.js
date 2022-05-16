@@ -75,9 +75,12 @@ let soup = {
     this.graphics.textFont('Cursive');
   },
   drawContainer: function() {
+    this.graphics.stroke('black');
+    this.graphics.fill('white');
     this.graphics.rect(this.pos.x, this.pos.y, this.size.x, this.size.y, RECT_RADIUS);
   },
   drawDivisions: function() {
+    this.graphics.stroke('black');
     // ----- rows.
     for (let i = 1; i <= SOUP_LETTERS_AMOUNT.y-1; i++) {
       this.graphics.line(
@@ -97,6 +100,8 @@ let soup = {
     }
   },
   drawLetters: function() {
+    this.graphics.fill('black');
+    this.graphics.noStroke();
     this.graphics.textAlign(CENTER, CENTER);
     this.graphics.textSize(15);
 
@@ -216,6 +221,8 @@ let soup = {
     this.drawWords();
   },
   restart: function() {
+    this.completed_words = [];
+    this.completed_words_counter = 0;
     this.graphics.clear();
   }
 }
@@ -248,6 +255,7 @@ let sidebar = {
     this.graphics.textSize(12);
   },
   drawContainer: function() {
+    this.graphics.fill('white');
     this.graphics.rect(this.pos.x, this.pos.y, this.size.x, this.size.y, RECT_RADIUS);
   },
   drawWords: function() {
@@ -265,6 +273,7 @@ let sidebar = {
     this.drawWords();
   },
   restart: function() {
+    this.word_positions = {};
     this.graphics.clear();
   }
 }
@@ -301,6 +310,10 @@ let sidebar_underlines = {
     this.erase();
     this.draw();
   },
+  restart: function() {
+    this.positions = [];
+    this.graphics.clear();
+  }
 }
 
 
@@ -452,6 +465,8 @@ let restart_bttn = {
 
 let game_container = {
   graphics: createGraphics(windowWidth, windowHeight),
+  pos: GAME_POS.copy(),
+  size: GAME_SIZE.copy(),
 
   draw: function() {
     this.graphics.strokeWeight(2);
@@ -460,7 +475,7 @@ let game_container = {
 }
 
 
-
+// ---------------------------------------------------- VARS
 
 
 
@@ -497,15 +512,17 @@ function setup() {
 }
 
 function restart() {
+  console.log('RESTART FUNCTION');
   mouse_cells = [];
   string_words_cell_ids = {};
 
-
+  console.log('RESTART METHODS');
   soup.restart();
   sidebar.restart();
   soup_selections.restart();
+  sidebar_underlines.restart();
 
-
+  console.log('DRAW METHODS INSIDE RESTART FUNCTION');
   soup.draw();
   sidebar.draw();
   restart_bttn.draw();
@@ -519,6 +536,20 @@ function draw() {
   image(sidebar_underlines.graphics,0,0);
   image(soup_selections.graphics,0,0);
   image(selection.graphics,0,0);
+
+  /*
+  image(game_container.graphics, game_container.pos.x, game_container.pos.y, game_container.size.x, game_container.size.y, 
+    game_container.pos.x, game_container.pos.y, game_container.size.x, game_container.size.y);
+  image(soup.graphics, soup.pos.x, soup.pos.y, soup.size.x, soup.size.y, 
+    soup.pos.x, soup.pos.y, soup.size.x, soup.size.y);
+  image(restart_bttn.graphics,0,0);
+  image(sidebar.graphics, sidebar.pos.x, sidebar.pos.y, sidebar.size.x, sidebar.size.y, 
+    sidebar.pos.x, sidebar.pos.y, sidebar.size.x, sidebar.size.y);
+  image(sidebar_underlines.graphics,0,0);
+  image(soup_selections.graphics,0,0);
+  image(selection.graphics,0,0);
+  */
+
   selection.graphics.clear();
   // transform mouse positions to vector variable for Math purpouses.
   [mouse.x, mouse.y] = [mouseX, mouseY];
