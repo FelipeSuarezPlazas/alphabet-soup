@@ -5,16 +5,30 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Alphabet Soup</title>
-  <link rel="stylesheet" type="text/css" href="../styles/style.css">
+  <link rel="stylesheet" type="text/css" href="styles/main.css">
 </head>
 
 <body>
-  <div class="container">
-    <div id="canva-game"></div>
+  <div id="game">
+
+    <!-- IN GAME --> <!-- This takes all the space of #game -->
+    <div id="list"></div>
+    <div id="soup"></div>
+    <!-- --------- -->
+
+
+    <!-- START MENU --> <!-- The position of this is absolute and is on top of IN GAME -->
+    <div id="menu">
+
+      <h2 id="title">ALPHABET SOUP</h2>                <!-- TITLE -->
+      <p id="description">Find all hiden words.</p>
+      <button id="start-button">START</button>      <!-- START BUTTON -->
+
+    </div>
+    <!-- --------- -->
   </div>
 
 
-  <script src="libraries/p5.js"></script>
   <script src="main/main.js"></script>
 </body>
 
